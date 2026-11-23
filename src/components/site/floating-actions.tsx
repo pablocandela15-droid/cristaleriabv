@@ -3,13 +3,14 @@
 import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { useWeb } from "@/components/site/web-provider";
 import { whatsappLink } from "@/content/site";
 import { cn } from "@/lib/utils";
 
 /** Botones flotantes: WhatsApp abajo a la izquierda y asistente virtual abajo a la derecha. */
 export function FloatingActions() {
+  const { site } = useWeb();
   const pathname = usePathname();
-  if (pathname.startsWith("/admin")) return null;
   // En la calculadora, en móvil y tablet, la barra inferior de precio ocupa ese
   // espacio y los botones taparían opciones: se muestran solo en escritorio.
   const inCalculator = pathname.startsWith("/presupuesto");
@@ -17,7 +18,7 @@ export function FloatingActions() {
   return (
     <>
       <a
-        href={whatsappLink("Hola, me gustaría pedir información sobre un trabajo de cristalería.")}
+        href={whatsappLink("Hola, me gustaría pedir información sobre un trabajo de cristalería.", site.whatsapp)}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Escríbenos por WhatsApp"

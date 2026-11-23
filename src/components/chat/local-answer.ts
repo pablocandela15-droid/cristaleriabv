@@ -1,6 +1,6 @@
-import { faqs } from "@/content/faq";
-import { services } from "@/content/services";
-import { site } from "@/content/site";
+import { faqs as defaultFaqs, type Faq } from "@/content/faq";
+import { services as defaultServices, type Service } from "@/content/services";
+import { site as defaultSite, type Site } from "@/content/site";
 
 const normalize = (s: string) =>
   s
@@ -10,10 +10,14 @@ const normalize = (s: string) =>
     .replace(/[^a-z0-9ñ\s]/g, " ");
 
 /**
- * Respuesta local para cuando el backend (edge function con OpenAI) aún no está
- * configurado: busca la pregunta frecuente o el servicio que mejor encaja.
+ * Respuesta local para cuando el asistente con IA (edge function `chat`) no está
+ * activo: busca la pregunta frecuente o el servicio que mejor encaja. Usa las
+ * preguntas, servicios y teléfonos editados en el panel si se le pasan.
  */
-export function localAnswer(question: string): string {
+export function localAnswer(
+  question: string,
+  { faqs = defaultFaqs, services = defaultServices, site = defaultSite }: { faqs?: Faq[]; services?: Service[]; site?: Site } = {},
+): string {
   const q = normalize(question);
   const words = new Set(q.split(/\s+/).filter((w) => w.length > 2));
 
@@ -39,5 +43,6 @@ export function localAnswer(question: string): string {
 
   if (best.score >= 2) return best.answer;
 
-  return `No tengo una respuesta exacta para eso, pero el equipo te ayuda encantado: llámanos al ${site.phones[0].display} o escríbenos por WhatsApp. También puedes calcular un presupuesto orientativo en la sección «Presupuesto».`;
+  const phone = site.phones[0]?.display;
+  return `No tengo una respuesta exacta para eso, pero el equipo te ayuda encantado: ${phone ? `llámanos al ${phone} o ` : ""}escríbenos por WhatsApp. También puedes calcular un presupuesto orientativo en la sección «Presupuesto».`;
 }

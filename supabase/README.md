@@ -1,90 +1,28 @@
-# Supabase · puesta en marcha
+# Supabase · backend antiguo de la web (no se aplica)
 
-Todo está **preparado pero sin aplicar**. Cuando tengáis la organización y el proyecto, seguid estos pasos (unos 15 minutos).
+**La base de datos de la web vive en el repo del panel, `admin-cristaleriabv`.** Allí están las migraciones (`supabase/migrations/`), su vuelta atrás (`supabase/rollbacks/`), el bucket público de fotos `web-fotos` y la edge function `web-solicitud-presupuesto`. Se aplican desde ese repo al aceptar una release del panel; esta carpeta **no se aplica** a ningún proyecto.
 
-## 1. Crear el proyecto
+## Qué lee y envía la web
 
-1. En [supabase.com](https://supabase.com) crea la organización de la cristalería y, dentro, un proyecto `cristaleriabv` en la región **eu-west-1 (Irlanda)** o **eu-central-1 (Fráncfort)**.
-2. En **Settings → API Keys** copia la **Project URL**, la **publishable key** (`sb_publishable_…`) y deja localizada la **secret key** (no se copia en ningún sitio de la web).
+Con `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (proyecto del panel, clave pública):
 
-## 2. Aplicar el esquema
+| Qué | Petición |
+| --- | --- |
+| Tarifas y catálogo de la calculadora | `GET /rest/v1/web_tarifas?select=config,catalogo&id=eq.1` |
+| Negocio, servicios, FAQ e imágenes | `GET /rest/v1/web_contenido?select=clave,valor` |
+| «Books» de fotos | `GET /rest/v1/web_albumes?select=…,fotos:web_fotos(…)&publicado=eq.true&order=orden.asc&fotos.order=orden.asc` |
+| Fotos destacadas (portada) | `GET /rest/v1/web_fotos?select=…,album:web_albumes(slug,titulo,servicio)&destacada=eq.true&order=orden.asc` |
+| Fotos | `https://<proyecto>.supabase.co/storage/v1/object/public/web-fotos/<ruta>` |
+| Solicitud de presupuesto | `POST /functions/v1/web-solicitud-presupuesto` → `{ numero }` |
 
-Opción A (recomendada, con la CLI):
+Las lecturas se hacen en el servidor de Next.js y se revalidan cada 60 s (`src/lib/web/datos.ts`). Si una tabla aún no existe (404) o Supabase falla, la web usa los valores del código.
 
-```bash
-npx supabase login
-npx supabase link --project-ref <REF_DEL_PROYECTO>
-npx supabase db push
-```
+## Qué hay en esta carpeta
 
-Opción B: abre **SQL Editor**, pega el contenido de `migrations/20261118120000_init.sql` y pulsa **Run**.
+El backend con el que nació la web, que nunca se llegó a aplicar:
 
-Crea las tablas `pricing`, `appointments`, `contact_messages`, `chat_sessions`, `chat_messages`, `admins` y `request_log`, todas con RLS:
+- `migrations/20261118120000_init.sql`: tablas `pricing`, `appointments`, `contact_messages`, `chat_sessions`, `chat_messages`, `admins` y `request_log`. Ya no las usa nada (el antiguo panel `/admin` se ha quitado; `/admin` redirige al panel nuevo).
+- `functions/contact`, `functions/book-appointment` y `functions/chat` (OpenAI): la web solo las llama con `NEXT_PUBLIC_FORMULARIOS_SUPABASE=1`. Por defecto el contacto y la reserva van por WhatsApp y el asistente responde en local con las preguntas frecuentes.
+- `functions/_shared/knowledge.ts`: conocimiento del asistente, generado con `npm run knowledge`.
 
-| Tabla | Público (web) | Administradores |
-| --- | --- | --- |
-| `pricing` | Lectura | Lectura y edición |
-| `appointments`, `contact_messages` | Sin acceso (se insertan vía edge functions) | Lectura, cambio de estado, borrado |
-| `chat_sessions`, `chat_messages` | Sin acceso | Lectura |
-| `request_log` | Sin acceso | Sin acceso (solo funciones) |
-
-## 3. Edge functions
-
-```bash
-npx supabase functions deploy chat
-npx supabase functions deploy book-appointment
-npx supabase functions deploy contact
-```
-
-`config.toml` ya las marca con `verify_jwt = false` (necesario con las claves `sb_publishable_…`); cada función valida, sanea y limita por IP sus entradas.
-
-Secretos (**Edge Functions → Secrets**, o `npx supabase secrets set NOMBRE=valor`):
-
-| Secreto | Obligatorio | Valor |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | Sí, para el asistente | Clave de la API de OpenAI |
-| `OPENAI_MODEL` | No | Modelo a usar (por defecto `gpt-4o-mini`) |
-| `ALLOWED_ORIGINS` | Recomendado | Dominios de la web separados por comas, p. ej. `https://cristaleriabaixvinalopo.es,https://cristaleriabv.vercel.app` |
-| `RATE_LIMIT_SALT` | Recomendado | Cualquier texto aleatorio largo |
-
-`SUPABASE_URL` y `SUPABASE_SECRET_KEYS` los inyecta Supabase automáticamente.
-
-Si cambiáis textos de servicios, preguntas frecuentes o precios por defecto, regenerad el conocimiento del asistente y volved a desplegar `chat`:
-
-```bash
-npm run knowledge
-npx supabase functions deploy chat
-```
-
-## 4. Usuarios del panel /admin
-
-1. **Authentication → Sign In / Providers**: desactiva **Allow new users to sign up** (nadie puede registrarse solo).
-2. **Authentication → Users → Invite user**: invita a `info@cristaleriabaixvinalopo.es` (y a quien haga falta).
-3. Dale permisos de administrador en el **SQL Editor**:
-
-```sql
-insert into public.admins (user_id, email)
-select id, email from auth.users where email = 'info@cristaleriabaixvinalopo.es';
-```
-
-4. En **Authentication → URL Configuration** añade la URL de la web (y `/admin`) a las URLs de redirección, para el enlace de «He olvidado mi contraseña».
-
-## 5. Conectar la web
-
-En Vercel (**Settings → Environment Variables**) y en `.env.local` para desarrollo:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://<REF>.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-NEXT_PUBLIC_SITE_URL=https://cristaleriabaixvinalopo.es
-```
-
-Sin estas variables la web funciona igual, pero los formularios y la reserva envían por WhatsApp y el asistente responde con las preguntas frecuentes.
-
-## 6. Limpieza automática (opcional)
-
-Activa la extensión `pg_cron` y programa la limpieza diaria de registros antiguos (límite de peticiones > 1 día, chats > 12 meses):
-
-```sql
-select cron.schedule('cleanup-old-rows', '15 3 * * *', 'select public.cleanup_old_rows()');
-```
+Si algún día se quisieran recuperar esas funciones, habría que llevar sus tablas y funciones al repo del panel (que es el dueño del esquema), desplegarlas allí con `verify_jwt = false` y sus secretos (`OPENAI_API_KEY`, `ALLOWED_ORIGINS`, `RATE_LIMIT_SALT`), y poner `NEXT_PUBLIC_FORMULARIOS_SUPABASE=1` en Vercel.

@@ -1,4 +1,4 @@
-import type { M2Category, PricingConfig } from "@/lib/pricing/config";
+import type { M2Category, PricingConfig } from "./config";
 
 /* ------------------------------------------------------------------ */
 /* Tipos                                                               */

@@ -5,11 +5,12 @@ import { RevealGroup, RevealItem } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { ServiceIcon } from "@/components/site/service-icon";
 import { servicePhotos } from "@/content/images";
-import { services } from "@/content/services";
+import { obtenerWeb } from "@/lib/web/datos";
 import { cn } from "@/lib/utils";
 
 /** Tarjetas de servicio con imagen y barra de vidrio esmerilado (como Formis). */
-export function ServicesGrid({ withHeading = true }: { withHeading?: boolean }) {
+export async function ServicesGrid({ withHeading = true }: { withHeading?: boolean }) {
+  const { services } = await obtenerWeb();
   return (
     <section id="servicios" className="scroll-mt-24 py-16 sm:py-24 lg:py-28">
       <div className="container-site">

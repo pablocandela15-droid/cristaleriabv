@@ -1,14 +1,23 @@
 /**
- * Acceso a las edge functions de Supabase desde el navegador.
- * Si las variables de entorno no están configuradas (p. ej. en local antes de
- * crear el proyecto de Supabase), `isBackendConfigured` es false y cada
- * formulario usa su alternativa (WhatsApp o respuestas locales).
+ * Acceso a Supabase con la clave pública (lectura del contenido de la web y
+ * edge functions). Si las variables de entorno no están configuradas,
+ * `isBackendConfigured` es false: la web usa los valores del código y cada
+ * formulario su alternativa (WhatsApp o respuestas locales).
  */
 export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 export const supabaseKey =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export const isBackendConfigured = Boolean(supabaseUrl && supabaseKey);
+
+/**
+ * Formularios antiguos de la web (edge functions `contact`, `book-appointment` y
+ * `chat`). No existen en el proyecto de Supabase del panel, así que quedan
+ * apagados aunque estén las variables de Supabase: solo se activan con
+ * NEXT_PUBLIC_FORMULARIOS_SUPABASE=1. Apagados, el contacto y la reserva van por
+ * WhatsApp y el asistente responde en local con las preguntas frecuentes.
+ */
+export const formulariosSupabase = isBackendConfigured && process.env.NEXT_PUBLIC_FORMULARIOS_SUPABASE === "1";
 
 /**
  * Cabeceras para llamar a Supabase con la clave pública. Las claves nuevas

@@ -9,6 +9,7 @@ import {
   ArrowRight,
   CalendarCheck,
   Check,
+  FileText,
   Info,
   Package,
   Printer,
@@ -21,22 +22,24 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldRenderer } from "@/components/calculator/field-renderer";
 import { BookingForm } from "@/components/forms/booking-form";
+import { QuoteRequestForm } from "@/components/forms/quote-request-form";
 import { NumberTicker } from "@/components/motion/number-ticker";
 import { ServiceIcon } from "@/components/site/service-icon";
+import { useWeb } from "@/components/site/web-provider";
 import { TravelCost, type TravelResult } from "@/components/tools/travel-cost";
 import { servicePhotos } from "@/content/images";
 import type { ServiceSlug } from "@/content/services";
 import { whatsappLink } from "@/content/site";
 import {
-  categories,
-  categoryList,
   mamparaModels,
   visibleFields,
+  type CategoryDef,
   type CategoryId,
   type Values,
 } from "@/lib/pricing/categories";
 import { buildQuoteMessage, deliveryLabels, selectedOptions, type Delivery } from "@/lib/pricing/message";
 import { usePricing } from "@/lib/pricing/use-pricing";
+import { quoteRequestsEnabled } from "@/lib/requests";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Servicio", "Configura", "Visita y entrega", "Resumen"] as const;
@@ -44,18 +47,34 @@ const STEPS = ["Servicio", "Configura", "Visita y entrega", "Resumen"] as const;
 const eur = (n: number) => `${n.toLocaleString("es-ES", { maximumFractionDigits: 2 })} €`;
 
 /**
+ * Un modelo estándar solo se ofrece si todas sus opciones siguen existiendo en
+ * el catálogo (el panel puede ocultar opciones de un campo).
+ */
+function modelAvailable(def: CategoryDef, values: Values) {
+  return def.sections
+    .flatMap((s) => s.fields)
+    .every((f) => {
+      if (!(f.kind === "chips" || f.kind === "select") || !(f.id in values)) return true;
+      return f.options.some((o) => o.value === String(values[f.id]));
+    });
+}
+
+/**
  * Punto de entrada: lee ?servicio= y monta la calculadora con ese servicio
- * preseleccionado. La `key` fuerza un estado limpio si cambia el parámetro.
+ * preseleccionado (si está visible). La `key` fuerza un estado limpio si cambia
+ * el parámetro.
  */
 export function Calculator() {
   const params = useSearchParams();
+  const { activas } = usePricing();
   const s = params.get("servicio");
-  const initial = s && s in categories ? (s as CategoryId) : null;
+  const initial = s && (activas as string[]).includes(s) ? (s as CategoryId) : null;
   return <CalculatorInner key={initial ?? "none"} initial={initial} />;
 }
 
 function CalculatorInner({ initial }: { initial: CategoryId | null }) {
-  const config = usePricing();
+  const { precios: config, categorias: categories, activas } = usePricing();
+  const { site } = useWeb();
   const topRef = useRef<HTMLDivElement>(null);
 
   const [catId, setCatId] = useState<CategoryId | null>(initial);
@@ -67,10 +86,12 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
   const [travel, setTravel] = useState<TravelResult | null>(null);
   const [delivery, setDelivery] = useState<Delivery>("instalacion");
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [requestOpen, setRequestOpen] = useState(false);
 
   const def = catId ? categories[catId] : null;
   const quote = useMemo(() => (def ? def.quote(values, config) : null), [def, values, config]);
-  const model = mamparaModels.find((m) => m.id === modelId);
+  const models = useMemo(() => mamparaModels.filter((m) => modelAvailable(categories.mamparas, m.values)), [categories]);
+  const model = models.find((m) => m.id === modelId);
 
   function scrollTop() {
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -95,7 +116,7 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
   }
 
   function pickModel(id: string) {
-    const m = mamparaModels.find((x) => x.id === id)!;
+    const m = models.find((x) => x.id === id)!;
     setModelId(id);
     setValues({ ...categories.mamparas.defaults, ...m.values });
   }
@@ -189,7 +210,8 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                   <h2 className="text-2xl font-medium sm:text-3xl">¿Qué necesitas?</h2>
                   <p className="mt-2 text-ink-soft">Elige el tipo de trabajo. Podrás cambiarlo en cualquier momento.</p>
                   <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {categoryList.map((c) => {
+                    {activas.map((id) => {
+                      const c = categories[id];
                       const photo = servicePhotos[c.service as ServiceSlug].cover;
                       return (
                         <button
@@ -240,11 +262,11 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                     </button>
                   </div>
 
-                  {catId === "mamparas" && (
+                  {catId === "mamparas" && (models.length > 0 || categories.domino.activo) && (
                     <div role="tablist" aria-label="Tipo de mampara" className="mt-5 inline-flex flex-wrap gap-1 rounded-2xl border border-navy-900/10 bg-cream-50 p-1">
                       {[
                         { id: "medida", label: "A medida", icon: Ruler },
-                        { id: "modelos", label: "Modelos estándar", icon: Package },
+                        ...(models.length ? [{ id: "modelos", label: "Modelos estándar", icon: Package }] : []),
                       ].map((t) => (
                         <button
                           key={t.id}
@@ -259,25 +281,27 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                           <t.icon aria-hidden className="size-4" /> {t.label}
                         </button>
                       ))}
-                      <button
-                        role="tab"
-                        aria-selected={false}
-                        onClick={() => choose("domino")}
-                        className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-medium text-navy-900 hover:bg-cream-200/50"
-                      >
-                        <ServiceIcon slug="domino" className="size-4" /> Dominó
-                      </button>
+                      {categories.domino.activo && (
+                        <button
+                          role="tab"
+                          aria-selected={false}
+                          onClick={() => choose("domino")}
+                          className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-medium text-navy-900 hover:bg-cream-200/50"
+                        >
+                          <ServiceIcon slug="domino" className="size-4" /> Dominó
+                        </button>
+                      )}
                     </div>
                   )}
 
-                  {catId === "mamparas" && mode === "modelos" ? (
+                  {catId === "mamparas" && mode === "modelos" && models.length > 0 ? (
                     <div className="mt-6">
                       <p className="text-ink-soft">
                         Nuestros modelos más populares, listos para instalar. Todos incluyen cristal templado de seguridad y herrajes
                         de calidad. Puedes personalizar medidas y acabados.
                       </p>
                       <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                        {mamparaModels.map((m) => {
+                        {models.map((m) => {
                           const price = categories.mamparas.quote({ ...categories.mamparas.defaults, ...m.values }, config).total;
                           const selected = modelId === m.id;
                           return (
@@ -422,9 +446,18 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                     </dl>
                   </section>
 
-                  <div className="grid gap-3 sm:grid-cols-3 print:hidden">
+                  <div className={cn("grid gap-3 print:hidden", quoteRequestsEnabled && quote.ready ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+                    {quoteRequestsEnabled && quote.ready && (
+                      <button
+                        type="button"
+                        onClick={() => setRequestOpen(true)}
+                        className="inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800"
+                      >
+                        <FileText aria-hidden className="size-5" /> Solicitar presupuesto
+                      </button>
+                    )}
                     <a
-                      href={whatsappLink(message)}
+                      href={whatsappLink(message, site.whatsapp)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-whatsapp px-4 font-medium text-white shadow-layered transition hover:brightness-110"
@@ -434,7 +467,12 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                     <button
                       type="button"
                       onClick={() => setBookingOpen(true)}
-                      className="inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800"
+                      className={cn(
+                        "inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 font-medium transition-colors",
+                        quoteRequestsEnabled && quote.ready
+                          ? "border border-navy-900/15 bg-cream-50 text-navy-900 hover:border-navy-900/35"
+                          : "bg-navy-900 text-cream-100 shadow-layered hover:bg-navy-800",
+                      )}
                     >
                       <CalendarCheck aria-hidden className="size-5" /> Reservar visita técnica
                     </button>
@@ -582,6 +620,28 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
               travel={travel}
               quote={quote.ready ? { category: def.name, total: grandTotal, summary: message } : null}
               onDone={() => setBookingOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto bg-cream-100 sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl text-navy-900">Solicitar presupuesto</DialogTitle>
+            <DialogDescription>
+              {def && quote?.ready ? `${def.name}: ${eur(grandTotal)} orientativos. ` : ""}Déjanos tus datos: revisamos el presupuesto y te
+              llamamos para confirmarlo y concertar la visita técnica.
+            </DialogDescription>
+          </DialogHeader>
+          {def && catId && quote?.ready && (
+            <QuoteRequestForm
+              categoria={catId}
+              valores={values}
+              total={quote.total}
+              resumen={message}
+              town={travel?.place}
+              onDone={() => setRequestOpen(false)}
             />
           )}
         </DialogContent>

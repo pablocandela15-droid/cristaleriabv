@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Marquee } from "@/components/motion/marquee";
 import { ServiceIcon } from "@/components/site/service-icon";
-import { services } from "@/content/services";
+import { obtenerWeb } from "@/lib/web/datos";
 
-export function ServicesMarquee() {
+export async function ServicesMarquee() {
+  const { services } = await obtenerWeb();
   return (
     <section aria-label="Nuestros servicios" className="border-y border-navy-900/10 bg-cream-50/60 py-5">
       <Marquee duration={45} gap="3rem">

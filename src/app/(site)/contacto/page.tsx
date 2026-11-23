@@ -4,18 +4,25 @@ import { PageHeader } from "@/components/site/page-header";
 import { ContactBooking } from "@/components/contact/contact-booking";
 import { ContactForm } from "@/components/forms/contact-form";
 import { Reveal } from "@/components/motion/reveal";
-import { fullAddress, site, whatsappLink } from "@/content/site";
+import { addressLine, mapsLink, whatsappLink } from "@/content/site";
+import { obtenerWeb } from "@/lib/web/datos";
 
-export const metadata: Metadata = {
-  title: "Contacto y visita técnica",
-  description: `Contacta con ${site.name}: ${site.phones[0].display}, ${site.email}. ${fullAddress}. Reserva tu visita técnica online.`,
-  alternates: { canonical: "/contacto" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { site } = await obtenerWeb();
+  const phone = site.phones[0] ? `${site.phones[0].display}, ` : "";
+  return {
+    title: "Contacto y visita técnica",
+    description: `Contacta con ${site.name}: ${phone}${site.email}. ${addressLine(site)}. Reserva tu visita técnica online.`,
+    alternates: { canonical: "/contacto" },
+  };
+}
 
-const { lat, lon } = site.address;
-const bbox = [lon - 0.008, lat - 0.004, lon + 0.008, lat + 0.004].join(",");
-
-export default function ContactoPage() {
+export default async function ContactoPage() {
+  const { site } = await obtenerWeb();
+  const fullAddress = addressLine(site);
+  const { lat, lon } = site.address;
+  const bbox = [lon - 0.008, lat - 0.004, lon + 0.008, lat + 0.004].join(",");
+  const whatsappPhone = site.phones.find((p) => p.tel.replace(/\D/g, "") === site.whatsapp)?.display ?? site.phones[0]?.display;
   return (
     <>
       <PageHeader
@@ -31,19 +38,19 @@ export default function ContactoPage() {
           {site.phones.map((p) => (
             <a key={p.tel} href={`tel:${p.tel}`} className="group rounded-2xl border border-navy-900/10 bg-cream-50 p-4 transition-colors hover:border-navy-900/30 sm:p-5">
               <Phone aria-hidden className="size-5 text-gold-600" />
-              <p className="mt-3 text-sm text-ink-soft">{p.label}</p>
+              <p className="mt-3 text-sm text-ink-soft">{p.label || "Teléfono"}</p>
               <p className="whitespace-nowrap font-heading text-lg font-medium text-navy-900 sm:text-xl">{p.display}</p>
             </a>
           ))}
           <a
-            href={whatsappLink("Hola, quería hacer una consulta.")}
+            href={whatsappLink("Hola, quería hacer una consulta.", site.whatsapp)}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-2xl border border-whatsapp/30 min-[380px]:col-span-2 lg:col-span-1 bg-whatsapp/5 p-4 transition-colors hover:border-whatsapp/60 sm:p-5"
           >
             <MessageCircle aria-hidden className="size-5 text-whatsapp" />
             <p className="mt-3 text-sm text-ink-soft">WhatsApp</p>
-            <p className="whitespace-nowrap font-heading text-lg font-medium text-navy-900 sm:text-xl">{site.phones[0].display}</p>
+            <p className="whitespace-nowrap font-heading text-lg font-medium text-navy-900 sm:text-xl">{whatsappPhone}</p>
           </a>
           <a
             href={`mailto:${site.email}`}
@@ -95,7 +102,7 @@ export default function ContactoPage() {
                 loading="lazy"
               />
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`}
+                href={mapsLink(site)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block bg-cream-50 px-4 py-3 text-sm font-medium text-navy-900 underline-offset-4 hover:underline"

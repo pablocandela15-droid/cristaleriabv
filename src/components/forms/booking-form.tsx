@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { ChoiceChips, Field, TextArea, TextInput } from "@/components/forms/fields";
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
 import { submitAppointment, validators, type AppointmentRequest } from "@/lib/requests";
-import { isBackendConfigured } from "@/lib/backend";
+import { formulariosSupabase } from "@/lib/backend";
+import { useWeb } from "@/components/site/web-provider";
 import type { TravelResult } from "@/components/tools/travel-cost";
 
 type Errors = Partial<Record<"name" | "phone" | "email" | "date" | "consent", string>>;
@@ -35,6 +36,7 @@ export function BookingForm({
   quote?: AppointmentRequest["quote"];
   onDone?: () => void;
 }) {
+  const { site } = useWeb();
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -87,10 +89,11 @@ export function BookingForm({
       quote: quote ?? null,
       consent: form.consent,
       website: form.website,
-    });
+    }, { whatsapp: site.whatsapp });
     if (!res.ok) {
       setState("idle");
-      toast.error(res.error, { description: "Inténtalo de nuevo o llámanos al 650 06 63 23." });
+      const phone = site.phones[0]?.display;
+      toast.error(res.error, { description: phone ? `Inténtalo de nuevo o llámanos al ${phone}.` : "Inténtalo de nuevo o escríbenos por WhatsApp." });
       return;
     }
     setState("done");
@@ -175,7 +178,7 @@ export function BookingForm({
         className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800 disabled:opacity-60"
       >
         {state === "sending" ? <LoaderCircle aria-hidden className="size-5 animate-spin" /> : <CalendarCheck aria-hidden className="size-5" />}
-        {isBackendConfigured ? "Solicitar visita técnica" : "Solicitar visita por WhatsApp"}
+        {formulariosSupabase ? "Solicitar visita técnica" : "Solicitar visita por WhatsApp"}
       </button>
     </form>
   );

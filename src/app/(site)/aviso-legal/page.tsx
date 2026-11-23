@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { LegalPage, Pending } from "@/components/site/legal-page";
-import { fullAddress, site } from "@/content/site";
+import { addressLine } from "@/content/site";
+import { obtenerWeb } from "@/lib/web/datos";
 
 export const metadata: Metadata = { title: "Aviso legal", robots: { index: false }, alternates: { canonical: "/aviso-legal" } };
 
-export default function AvisoLegalPage() {
+export default async function AvisoLegalPage() {
+  const { site } = await obtenerWeb();
   return (
     <LegalPage title="Aviso legal" href="/aviso-legal" updated="noviembre de 2026">
       <h2>1. Datos identificativos</h2>
@@ -19,8 +21,8 @@ export default function AvisoLegalPage() {
         <li>
           NIF/CIF: <Pending>[NIF/CIF]</Pending>
         </li>
-        <li>Domicilio: {fullAddress}</li>
-        <li>Teléfono: {site.phones[0].display}</li>
+        <li>Domicilio: {addressLine(site)}</li>
+        <li>Teléfono: {site.phones[0]?.display}</li>
         <li>Email: {site.email}</li>
         <li>
           Datos registrales (si es sociedad): <Pending>[Registro Mercantil, tomo, folio, hoja]</Pending>

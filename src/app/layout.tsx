@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
 import localFont from "next/font/local";
-import { fullAddress, site } from "@/content/site";
+import { mapsLink, type Site } from "@/content/site";
+import { leerTarifas, obtenerWeb } from "@/lib/web/datos";
+import { WebProvider } from "@/components/site/web-provider";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -29,66 +31,74 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(site.url),
-  title: {
-    default: `${site.name} | Cristaleros en Crevillente y el Baix Vinalopó`,
-    template: `%s | ${site.name}`,
-  },
-  description: site.description,
-  keywords: [
-    "cristalería",
-    "mamparas",
-    "espejos",
-    "cerramientos",
-    "aluminio",
-    "barandillas de vidrio",
-    "Crevillente",
-    "Baix Vinalopó",
-    "Elche",
-    "cristaleros",
-  ],
-  openGraph: {
-    type: "website",
-    locale: "es_ES",
-    siteName: site.name,
-    title: `${site.name} | Expertos en vidrio y aluminio`,
+export async function generateMetadata(): Promise<Metadata> {
+  const { site, photos } = await obtenerWeb();
+  return {
+    metadataBase: new URL(site.url),
+    title: {
+      default: `${site.name} | Cristaleros en Crevillente y el Baix Vinalopó`,
+      template: `%s | ${site.name}`,
+    },
     description: site.description,
-  },
-  twitter: { card: "summary_large_image" },
-  alternates: { canonical: "/" },
-};
+    keywords: [
+      "cristalería",
+      "mamparas",
+      "espejos",
+      "cerramientos",
+      "aluminio",
+      "barandillas de vidrio",
+      "Crevillente",
+      "Baix Vinalopó",
+      "Elche",
+      "cristaleros",
+    ],
+    openGraph: {
+      type: "website",
+      locale: "es_ES",
+      siteName: site.name,
+      title: `${site.name} | Expertos en vidrio y aluminio`,
+      description: site.description,
+      images: [{ url: photos.hero.src, alt: photos.hero.alt }],
+    },
+    twitter: { card: "summary_large_image" },
+    alternates: { canonical: "/" },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0a2a48",
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "HomeAndConstructionBusiness",
-  name: site.name,
-  description: site.description,
-  url: site.url,
-  telephone: site.phones[0].tel,
-  email: site.email,
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: site.address.street,
-    postalCode: site.address.postalCode,
-    addressLocality: site.address.city,
-    addressRegion: site.address.province,
-    addressCountry: "ES",
-  },
-  geo: { "@type": "GeoCoordinates", latitude: site.address.lat, longitude: site.address.lon },
-  openingHoursSpecification: [
-    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "09:00", closes: "13:30" },
-    { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "16:00", closes: "19:30" },
-  ],
-  areaServed: "Baix Vinalopó, Alicante",
-  hasMap: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`,
-};
+/** Datos estructurados del negocio (con los datos de contacto editables desde el panel). */
+function businessJsonLd(site: Site) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "HomeAndConstructionBusiness",
+    name: site.name,
+    description: site.description,
+    url: site.url,
+    telephone: site.phones[0]?.tel,
+    email: site.email,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: site.address.street,
+      postalCode: site.address.postalCode,
+      addressLocality: site.address.city,
+      addressRegion: site.address.province,
+      addressCountry: "ES",
+    },
+    geo: { "@type": "GeoCoordinates", latitude: site.address.lat, longitude: site.address.lon },
+    openingHoursSpecification: [
+      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "09:00", closes: "13:30" },
+      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "16:00", closes: "19:30" },
+    ],
+    areaServed: "Baix Vinalopó, Alicante",
+    hasMap: mapsLink(site),
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const [{ site, services, faqs }, tarifas] = await Promise.all([obtenerWeb(), leerTarifas()]);
   return (
     // data-scroll-behavior="smooth": el scroll suave solo se usa dentro de la página;
     // al cambiar de página Next.js lo desactiva y la nueva página empieza arriba.
@@ -100,9 +110,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(businessJsonLd(site)).replace(/</g, "\\u003c") }}
         />
-        <Providers>{children}</Providers>
+        <WebProvider value={{ site, services, faqs, tarifas }}>
+          <Providers>{children}</Providers>
+        </WebProvider>
       </body>
     </html>
   );

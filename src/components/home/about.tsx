@@ -4,10 +4,10 @@ import { NumberTicker } from "@/components/motion/number-ticker";
 import { Reveal } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { CtaLink } from "@/components/site/cta";
-import { photos } from "@/content/images";
-import { site } from "@/content/site";
+import { obtenerWeb } from "@/lib/web/datos";
 
-export function About() {
+export async function About() {
+  const { site, photos } = await obtenerWeb();
   return (
     <section className="py-16 sm:py-24 lg:py-28">
       <div className="container-site grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
