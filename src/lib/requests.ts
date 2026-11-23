@@ -1,4 +1,4 @@
-import { BackendError, callFunction, isBackendConfigured } from "@/lib/backend";
+import { BackendError, callFunction, formulariosSupabase } from "@/lib/backend";
 import { whatsappLink } from "@/content/site";
 
 export type AppointmentRequest = {
@@ -52,10 +52,14 @@ function appointmentText(r: AppointmentRequest) {
     .join("\n");
 }
 
-/** Envía la reserva a Supabase; sin backend, abre WhatsApp con los datos. */
+/**
+ * Envía la reserva a la edge function `book-appointment` si los formularios de
+ * Supabase están activos (NEXT_PUBLIC_FORMULARIOS_SUPABASE=1); si no, abre
+ * WhatsApp con los datos.
+ */
 export async function submitAppointment(r: AppointmentRequest): Promise<SubmitResult> {
   if (r.website) return { ok: true, via: "backend" };
-  if (!isBackendConfigured) {
+  if (!formulariosSupabase) {
     window.open(whatsappLink(appointmentText(r)), "_blank", "noopener,noreferrer");
     return { ok: true, via: "whatsapp" };
   }
@@ -67,9 +71,10 @@ export async function submitAppointment(r: AppointmentRequest): Promise<SubmitRe
   }
 }
 
+/** Mensaje de contacto: edge function `contact` si los formularios de Supabase están activos; si no, WhatsApp. */
 export async function submitContact(r: ContactRequest): Promise<SubmitResult> {
   if (r.website) return { ok: true, via: "backend" };
-  if (!isBackendConfigured) {
+  if (!formulariosSupabase) {
     const text = [
       "*Mensaje desde la web*",
       `Nombre: ${r.name}`,

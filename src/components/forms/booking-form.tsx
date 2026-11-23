@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ChoiceChips, Field, TextArea, TextInput } from "@/components/forms/fields";
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
 import { submitAppointment, validators, type AppointmentRequest } from "@/lib/requests";
-import { isBackendConfigured } from "@/lib/backend";
+import { formulariosSupabase } from "@/lib/backend";
 import type { TravelResult } from "@/components/tools/travel-cost";
 
 type Errors = Partial<Record<"name" | "phone" | "email" | "date" | "consent", string>>;
@@ -175,7 +175,7 @@ export function BookingForm({
         className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800 disabled:opacity-60"
       >
         {state === "sending" ? <LoaderCircle aria-hidden className="size-5 animate-spin" /> : <CalendarCheck aria-hidden className="size-5" />}
-        {isBackendConfigured ? "Solicitar visita técnica" : "Solicitar visita por WhatsApp"}
+        {formulariosSupabase ? "Solicitar visita técnica" : "Solicitar visita por WhatsApp"}
       </button>
     </form>
   );

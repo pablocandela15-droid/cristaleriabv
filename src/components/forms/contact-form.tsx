@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { CheckCircle2, LoaderCircle, Send } from "lucide-react";
 import { toast } from "sonner";
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
-import { isBackendConfigured } from "@/lib/backend";
+import { formulariosSupabase } from "@/lib/backend";
 import { submitContact, validators } from "@/lib/requests";
 import { services } from "@/content/services";
 import { cn } from "@/lib/utils";
@@ -138,7 +138,7 @@ export function ContactForm({ dark }: { dark?: boolean }) {
         )}
       >
         {state === "sending" ? <LoaderCircle aria-hidden className="size-5 animate-spin" /> : <Send aria-hidden className="size-5" />}
-        {isBackendConfigured ? "Enviar mensaje" : "Enviar por WhatsApp"}
+        {formulariosSupabase ? "Enviar mensaje" : "Enviar por WhatsApp"}
       </button>
     </form>
   );
