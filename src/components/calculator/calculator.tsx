@@ -9,6 +9,7 @@ import {
   ArrowRight,
   CalendarCheck,
   Check,
+  FileText,
   Info,
   Package,
   Printer,
@@ -21,6 +22,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FieldRenderer } from "@/components/calculator/field-renderer";
 import { BookingForm } from "@/components/forms/booking-form";
+import { QuoteRequestForm } from "@/components/forms/quote-request-form";
 import { NumberTicker } from "@/components/motion/number-ticker";
 import { ServiceIcon } from "@/components/site/service-icon";
 import { useWeb } from "@/components/site/web-provider";
@@ -37,6 +39,7 @@ import {
 } from "@/lib/pricing/categories";
 import { buildQuoteMessage, deliveryLabels, selectedOptions, type Delivery } from "@/lib/pricing/message";
 import { usePricing } from "@/lib/pricing/use-pricing";
+import { quoteRequestsEnabled } from "@/lib/requests";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Servicio", "Configura", "Visita y entrega", "Resumen"] as const;
@@ -83,6 +86,7 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
   const [travel, setTravel] = useState<TravelResult | null>(null);
   const [delivery, setDelivery] = useState<Delivery>("instalacion");
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [requestOpen, setRequestOpen] = useState(false);
 
   const def = catId ? categories[catId] : null;
   const quote = useMemo(() => (def ? def.quote(values, config) : null), [def, values, config]);
@@ -442,7 +446,16 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                     </dl>
                   </section>
 
-                  <div className="grid gap-3 sm:grid-cols-3 print:hidden">
+                  <div className={cn("grid gap-3 print:hidden", quoteRequestsEnabled && quote.ready ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+                    {quoteRequestsEnabled && quote.ready && (
+                      <button
+                        type="button"
+                        onClick={() => setRequestOpen(true)}
+                        className="inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800"
+                      >
+                        <FileText aria-hidden className="size-5" /> Solicitar presupuesto
+                      </button>
+                    )}
                     <a
                       href={whatsappLink(message, site.whatsapp)}
                       target="_blank"
@@ -454,7 +467,12 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                     <button
                       type="button"
                       onClick={() => setBookingOpen(true)}
-                      className="inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800"
+                      className={cn(
+                        "inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 font-medium transition-colors",
+                        quoteRequestsEnabled && quote.ready
+                          ? "border border-navy-900/15 bg-cream-50 text-navy-900 hover:border-navy-900/35"
+                          : "bg-navy-900 text-cream-100 shadow-layered hover:bg-navy-800",
+                      )}
                     >
                       <CalendarCheck aria-hidden className="size-5" /> Reservar visita técnica
                     </button>
@@ -602,6 +620,28 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
               travel={travel}
               quote={quote.ready ? { category: def.name, total: grandTotal, summary: message } : null}
               onDone={() => setBookingOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto bg-cream-100 sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-2xl text-navy-900">Solicitar presupuesto</DialogTitle>
+            <DialogDescription>
+              {def && quote?.ready ? `${def.name}: ${eur(grandTotal)} orientativos. ` : ""}Déjanos tus datos: revisamos el presupuesto y te
+              llamamos para confirmarlo y concertar la visita técnica.
+            </DialogDescription>
+          </DialogHeader>
+          {def && catId && quote?.ready && (
+            <QuoteRequestForm
+              categoria={catId}
+              valores={values}
+              total={quote.total}
+              resumen={message}
+              town={travel?.place}
+              onDone={() => setRequestOpen(false)}
             />
           )}
         </DialogContent>

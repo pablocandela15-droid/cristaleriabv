@@ -1,4 +1,4 @@
-import { BackendError, callFunction, formulariosSupabase } from "@/lib/backend";
+import { BackendError, callFunction, formulariosSupabase, isBackendConfigured } from "@/lib/backend";
 import { whatsappLink } from "@/content/site";
 
 export type AppointmentRequest = {
@@ -97,6 +97,61 @@ export async function submitContact(r: ContactRequest, opts: Opts = {}): Promise
     return { ok: true, via: "backend" };
   } catch (e) {
     return { ok: false, error: e instanceof BackendError ? e.message : "No se pudo enviar el mensaje" };
+  }
+}
+
+/** Solicitud de presupuesto desde la calculadora (edge function `web-solicitud-presupuesto` del panel). */
+export type QuoteRequest = {
+  nombre: string;
+  telefono: string;
+  email?: string;
+  poblacion?: string;
+  direccion?: string;
+  notas?: string;
+  /** Id de la categoría de la calculadora (mamparas, espejos…). */
+  categoria: string;
+  /** Valores introducidos en la calculadora, para recalcular en el panel. */
+  valores: Record<string, unknown>;
+  /** Precio orientativo de la calculadora (€). */
+  total: number;
+  /** Resumen legible (el mismo texto que se envía por WhatsApp). */
+  resumen: string;
+  consentimiento: true;
+  /** Campo trampa anti-spam: debe llegar vacío. */
+  website: string;
+};
+
+export type QuoteResult = { ok: true; numero?: string } | { ok: false; error: string };
+
+/** Hay dónde guardar la solicitud: el proyecto de Supabase del panel está configurado. */
+export const quoteRequestsEnabled = isBackendConfigured;
+
+/**
+ * Guarda la solicitud como presupuesto «solicitud» en el panel y devuelve su
+ * número (P-2026-0001). Si falla, el formulario ofrece enviarla por WhatsApp.
+ */
+export async function submitQuoteRequest(r: QuoteRequest): Promise<QuoteResult> {
+  if (r.website) return { ok: true };
+  if (!isBackendConfigured) return { ok: false, error: "No podemos guardar la solicitud ahora mismo" };
+  const body: QuoteRequest = {
+    ...r,
+    nombre: r.nombre.slice(0, 120),
+    telefono: r.telefono.slice(0, 30),
+    email: r.email?.slice(0, 200) || undefined,
+    poblacion: r.poblacion?.slice(0, 120) || undefined,
+    notas: r.notas?.slice(0, 1500) || undefined,
+    resumen: r.resumen.slice(0, 4000),
+    total: Math.max(0, Math.min(1e6, Math.round(r.total * 100) / 100)),
+  };
+  try {
+    const res = await callFunction<{ numero?: string }>("web-solicitud-presupuesto", body, AbortSignal.timeout(15000));
+    return { ok: true, numero: typeof res?.numero === "string" ? res.numero : undefined };
+  } catch (e) {
+    if (e instanceof BackendError && e.status === 429) {
+      return { ok: false, error: "Has enviado varias solicitudes seguidas. Espera un poco o escríbenos por WhatsApp." };
+    }
+    if (e instanceof BackendError && e.status === 400 && e.message) return { ok: false, error: e.message };
+    return { ok: false, error: "No hemos podido enviar la solicitud" };
   }
 }
 
