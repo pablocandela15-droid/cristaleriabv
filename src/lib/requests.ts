@@ -31,6 +31,9 @@ export type ContactRequest = {
 
 export type SubmitResult = { ok: true; via: "backend" | "whatsapp"; reference?: string } | { ok: false; error: string };
 
+/** Número de WhatsApp del negocio (el del panel, si lo hay). */
+type Opts = { whatsapp?: string };
+
 const slotLabel = { manana: "Mañana (9:00–13:30)", tarde: "Tarde (16:00–19:30)", "": "Indiferente" } as const;
 
 function appointmentText(r: AppointmentRequest) {
@@ -57,10 +60,10 @@ function appointmentText(r: AppointmentRequest) {
  * Supabase están activos (NEXT_PUBLIC_FORMULARIOS_SUPABASE=1); si no, abre
  * WhatsApp con los datos.
  */
-export async function submitAppointment(r: AppointmentRequest): Promise<SubmitResult> {
+export async function submitAppointment(r: AppointmentRequest, opts: Opts = {}): Promise<SubmitResult> {
   if (r.website) return { ok: true, via: "backend" };
   if (!formulariosSupabase) {
-    window.open(whatsappLink(appointmentText(r)), "_blank", "noopener,noreferrer");
+    window.open(whatsappLink(appointmentText(r), opts.whatsapp), "_blank", "noopener,noreferrer");
     return { ok: true, via: "whatsapp" };
   }
   try {
@@ -72,7 +75,7 @@ export async function submitAppointment(r: AppointmentRequest): Promise<SubmitRe
 }
 
 /** Mensaje de contacto: edge function `contact` si los formularios de Supabase están activos; si no, WhatsApp. */
-export async function submitContact(r: ContactRequest): Promise<SubmitResult> {
+export async function submitContact(r: ContactRequest, opts: Opts = {}): Promise<SubmitResult> {
   if (r.website) return { ok: true, via: "backend" };
   if (!formulariosSupabase) {
     const text = [
@@ -86,7 +89,7 @@ export async function submitContact(r: ContactRequest): Promise<SubmitResult> {
     ]
       .filter((x): x is string => typeof x === "string")
       .join("\n");
-    window.open(whatsappLink(text), "_blank", "noopener,noreferrer");
+    window.open(whatsappLink(text, opts.whatsapp), "_blank", "noopener,noreferrer");
     return { ok: true, via: "whatsapp" };
   }
   try {

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { LegalPage, Pending } from "@/components/site/legal-page";
-import { fullAddress, site } from "@/content/site";
+import { addressLine } from "@/content/site";
+import { obtenerWeb } from "@/lib/web/datos";
 
 export const metadata: Metadata = { title: "Política de privacidad", robots: { index: false }, alternates: { canonical: "/privacidad" } };
 
-export default function PrivacidadPage() {
+export default async function PrivacidadPage() {
+  const { site } = await obtenerWeb();
   return (
     <LegalPage title="Política de privacidad" href="/privacidad" updated="noviembre de 2026">
       <h2>1. Responsable del tratamiento</h2>
@@ -15,9 +17,9 @@ export default function PrivacidadPage() {
         <li>
           NIF/CIF: <Pending>[NIF/CIF]</Pending>
         </li>
-        <li>Dirección: {fullAddress}</li>
+        <li>Dirección: {addressLine(site)}</li>
         <li>Email: {site.email}</li>
-        <li>Teléfono: {site.phones[0].display}</li>
+        <li>Teléfono: {site.phones[0]?.display}</li>
       </ul>
 
       <h2>2. Qué datos tratamos</h2>

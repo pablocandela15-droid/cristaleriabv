@@ -7,6 +7,7 @@ import { ChoiceChips, Field, TextArea, TextInput } from "@/components/forms/fiel
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
 import { submitAppointment, validators, type AppointmentRequest } from "@/lib/requests";
 import { formulariosSupabase } from "@/lib/backend";
+import { useWeb } from "@/components/site/web-provider";
 import type { TravelResult } from "@/components/tools/travel-cost";
 
 type Errors = Partial<Record<"name" | "phone" | "email" | "date" | "consent", string>>;
@@ -35,6 +36,7 @@ export function BookingForm({
   quote?: AppointmentRequest["quote"];
   onDone?: () => void;
 }) {
+  const { site } = useWeb();
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -87,10 +89,11 @@ export function BookingForm({
       quote: quote ?? null,
       consent: form.consent,
       website: form.website,
-    });
+    }, { whatsapp: site.whatsapp });
     if (!res.ok) {
       setState("idle");
-      toast.error(res.error, { description: "Inténtalo de nuevo o llámanos al 650 06 63 23." });
+      const phone = site.phones[0]?.display;
+      toast.error(res.error, { description: phone ? `Inténtalo de nuevo o llámanos al ${phone}.` : "Inténtalo de nuevo o escríbenos por WhatsApp." });
       return;
     }
     setState("done");

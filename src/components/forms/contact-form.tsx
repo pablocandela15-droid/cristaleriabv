@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
 import { formulariosSupabase } from "@/lib/backend";
 import { submitContact, validators } from "@/lib/requests";
-import { services } from "@/content/services";
+import { useWeb } from "@/components/site/web-provider";
 import { cn } from "@/lib/utils";
 
 type Errors = Partial<Record<"name" | "phone" | "email" | "message" | "consent", string>>;
 
 /** Formulario de contacto. `dark` para usarlo sobre fondo marino. */
 export function ContactForm({ dark }: { dark?: boolean }) {
+  const { site, services } = useWeb();
   const [form, setForm] = useState({ service: "", name: "", phone: "", email: "", message: "", consent: false, website: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
@@ -53,7 +54,7 @@ export function ContactForm({ dark }: { dark?: boolean }) {
       message: form.message.trim(),
       consent: form.consent,
       website: form.website,
-    });
+    }, { whatsapp: site.whatsapp });
     if (!res.ok) {
       setState("idle");
       toast.error(res.error);

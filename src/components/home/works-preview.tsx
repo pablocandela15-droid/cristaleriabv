@@ -3,9 +3,10 @@ import { TextReveal } from "@/components/motion/text-reveal";
 import { Reveal } from "@/components/motion/reveal";
 import { CtaLink } from "@/components/site/cta";
 import { WorksGrid } from "@/components/works/works-grid";
-import { featuredWorks } from "@/content/works";
+import { featuredWorks, type Work } from "@/content/works";
 
-export function WorksPreview() {
+/** Trabajos de la portada: las fotos destacadas del panel o, si no hay, la selección del código. */
+export function WorksPreview({ works = featuredWorks }: { works?: Work[] }) {
   return (
     <section className="py-16 sm:py-24 lg:py-28">
       <div className="container-site">
@@ -22,7 +23,7 @@ export function WorksPreview() {
           </Reveal>
         </div>
         <Reveal className="mt-14">
-          <WorksGrid works={featuredWorks} filter={false} cols={2} />
+          <WorksGrid works={works} filter={false} cols={2} />
         </Reveal>
       </div>
     </section>

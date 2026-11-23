@@ -7,12 +7,13 @@ import { CalculatorBand } from "@/components/home/calculator-band";
 import { WorksPreview } from "@/components/home/works-preview";
 import { FaqSection } from "@/components/home/faq-section";
 import { ContactCta } from "@/components/home/contact-cta";
-import { faqs } from "@/content/faq";
+import { obtenerWeb } from "@/lib/web/datos";
+import { faqsPorIndice } from "@/lib/web/mezclar";
 
-/** Las 5 preguntas frecuentes de la home: visita, plazos, presupuesto, garantía y pago. */
-const homeFaqs = [9, 0, 5, 3, 8].map((i) => faqs[i]);
-
-export default function HomePage() {
+export default async function HomePage() {
+  const web = await obtenerWeb();
+  /** Las 5 preguntas frecuentes de la home: visita, plazos, presupuesto, garantía y pago. */
+  const homeFaqs = faqsPorIndice(web.faqs, [9, 0, 5, 3, 8], 5);
   return (
     <>
       <Hero />
@@ -21,7 +22,7 @@ export default function HomePage() {
       <ServicesGrid />
       <Process />
       <CalculatorBand />
-      <WorksPreview />
+      <WorksPreview works={web.featured} />
       <FaqSection items={homeFaqs} />
       <ContactCta />
     </>

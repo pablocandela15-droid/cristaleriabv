@@ -1,9 +1,10 @@
 import Image from "next/image";
 import { Reveal } from "@/components/motion/reveal";
 import { ContactForm } from "@/components/forms/contact-form";
-import { photos } from "@/content/images";
+import { obtenerWeb } from "@/lib/web/datos";
 
-export function ContactCta() {
+export async function ContactCta() {
+  const { photos } = await obtenerWeb();
   return (
     <section id="contacto" className="scroll-mt-24 pb-16 sm:pb-24 lg:pb-28">
       <div className="container-site">

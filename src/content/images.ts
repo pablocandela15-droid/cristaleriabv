@@ -22,6 +22,10 @@ function photo(file: string): Photo {
 
 const inFolder = (folder: string) => list.filter((c) => c.file.startsWith(`${folder}/`)).map(toPhoto);
 
+/** Huecos de foto que el panel puede cambiar (bloque `imagenes` de `web_contenido`). */
+export const imageSlots = ["hero", "heroHouse", "about", "aboutHands", "contact"] as const;
+export type ImageSlot = (typeof imageSlots)[number];
+
 export const photos = {
   hero: photo("hero/bano-mampara-cristal-luminoso.jpg"),
   heroHouse: photo("hero/casa-mediterranea-ventanales.jpg"),

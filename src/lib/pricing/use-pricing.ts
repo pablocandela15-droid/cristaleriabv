@@ -1,38 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DEFAULT_PRICING, type PricingConfig } from "@/lib/pricing/config";
-import { isBackendConfigured, publicHeaders, supabaseUrl } from "@/lib/backend";
+import { useMemo } from "react";
+import { categories, type CategoryId } from "@/lib/pricing/categories";
+import { mergePricing, resolverTarifas } from "@/lib/pricing/tarifas";
+import { useWeb } from "@/components/site/web-provider";
 
-/** Mezcla superficial por categoría: lo que falte en Supabase se toma de los valores por defecto. */
-export function mergePricing(remote: Partial<PricingConfig> | null | undefined): PricingConfig {
-  if (!remote) return DEFAULT_PRICING;
-  const out = { ...DEFAULT_PRICING } as Record<string, unknown>;
-  for (const [k, v] of Object.entries(remote)) {
-    const def = (DEFAULT_PRICING as Record<string, unknown>)[k];
-    out[k] = def && typeof def === "object" && v && typeof v === "object" ? { ...def, ...v } : v;
-  }
-  return out as PricingConfig;
-}
+// Se mantiene la exportación de siempre (ahora vive en el módulo compartido tarifas.ts).
+export { mergePricing };
 
-/** Tarifas vigentes: las de Supabase (tabla `pricing`) si existe; si no, las de config.ts. */
+/**
+ * Tarifas vigentes de la calculadora: la fila de `web_tarifas` de Supabase
+ * (precios + catálogo, leída en el servidor y revalidada cada minuto) aplicada
+ * sobre config.ts y categories.ts con resolverTarifas(). Sin Supabase, o si la
+ * tabla aún no existe, son exactamente las del código.
+ *
+ * - `precios`: PricingConfig completo.
+ * - `categorias`: todas las categorías con textos, opciones y campos del panel
+ *   (las ocultas con `activo: false`). Calcular siempre con categoria.quote(v, precios).
+ * - `activas`: ids de las categorías visibles, en el orden del código.
+ */
 export function usePricing() {
-  const [config, setConfig] = useState<PricingConfig>(DEFAULT_PRICING);
-
-  useEffect(() => {
-    if (!isBackendConfigured) return;
-    const ctrl = new AbortController();
-    fetch(`${supabaseUrl}/rest/v1/pricing?select=config&id=eq.1`, {
-      headers: publicHeaders(),
-      signal: ctrl.signal,
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((rows: { config: Partial<PricingConfig> }[] | null) => {
-        if (rows?.[0]?.config) setConfig(mergePricing(rows[0].config));
-      })
-      .catch(() => {});
-    return () => ctrl.abort();
-  }, []);
-
-  return config;
+  const { tarifas } = useWeb();
+  return useMemo(() => {
+    const { precios, categorias } = resolverTarifas(categories, tarifas);
+    const activas = (Object.keys(categorias) as CategoryId[]).filter((id) => categorias[id].activo);
+    return { precios, categorias, activas };
+  }, [tarifas]);
 }

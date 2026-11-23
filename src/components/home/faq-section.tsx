@@ -5,12 +5,15 @@ import { AnimatePresence, motion } from "motion/react";
 import { MessageCircle, Plus } from "lucide-react";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { Reveal } from "@/components/motion/reveal";
-import { faqs, type Faq } from "@/content/faq";
+import type { Faq } from "@/content/faq";
 import { whatsappLink } from "@/content/site";
+import { useWeb } from "@/components/site/web-provider";
 import { cn } from "@/lib/utils";
 
 /** Preguntas frecuentes en acordeón (estilo Formis: título a la izquierda, tarjetas a la derecha). */
-export function FaqSection({ items = faqs, title = true }: { items?: Faq[]; title?: boolean }) {
+export function FaqSection({ items, title = true }: { items?: Faq[]; title?: boolean }) {
+  const web = useWeb();
+  const list = items ?? web.faqs;
   const [open, setOpen] = useState<number | null>(0);
 
   return (
@@ -28,7 +31,7 @@ export function FaqSection({ items = faqs, title = true }: { items?: Faq[]; titl
             <Reveal delay={0.15}>
               <p className="mt-5 max-w-sm text-ink-soft">¿No encuentras tu respuesta? Escríbenos y te contestamos enseguida.</p>
               <a
-                href={whatsappLink("Hola, tengo una duda:")}
+                href={whatsappLink("Hola, tengo una duda:", web.site.whatsapp)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-6 inline-flex min-h-11 items-center gap-2 font-medium text-navy-900 underline underline-offset-4"
@@ -40,7 +43,7 @@ export function FaqSection({ items = faqs, title = true }: { items?: Faq[]; titl
         )}
 
         <div className="space-y-3">
-          {items.map((f, i) => {
+          {list.map((f, i) => {
             const isOpen = open === i;
             const id = `faq-${i}`;
             return (

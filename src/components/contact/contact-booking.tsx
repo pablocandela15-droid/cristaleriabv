@@ -4,10 +4,11 @@ import { useState } from "react";
 import { BookingForm } from "@/components/forms/booking-form";
 import { TravelCost, type TravelResult } from "@/components/tools/travel-cost";
 import { NativeSelect, Field } from "@/components/forms/fields";
-import { services } from "@/content/services";
+import { useWeb } from "@/components/site/web-provider";
 
 /** Reserva de visita técnica: población (coste de desplazamiento) + datos de contacto. */
 export function ContactBooking() {
+  const { services } = useWeb();
   const [travel, setTravel] = useState<TravelResult | null>(null);
   const [service, setService] = useState("");
   return (

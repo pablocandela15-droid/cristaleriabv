@@ -2,10 +2,12 @@ import { servicePhotos, type Photo } from "@/content/images";
 import { services, type ServiceSlug } from "@/content/services";
 
 /**
- * Galería de trabajos. De momento usa fotos de stock de referencia; cuando
- * tengáis fotos reales, añadidlas aquí (título, categoría y foto).
+ * Galería de trabajos por defecto (fotos de stock de referencia). Con Supabase,
+ * los «books» de fotos del panel (`web_albumes` / `web_fotos`) la sustituyen en
+ * /trabajos, en la galería de cada servicio y en la portada (fotos destacadas).
+ * `category` es null para fotos de álbumes sin servicio asociado.
  */
-export type Work = { title: string; category: ServiceSlug; photo: Photo };
+export type Work = { title: string; category: ServiceSlug | null; photo: Photo };
 
 const titles: Record<string, string> = {
   "mamparas/cover.jpg": "Mampara de ducha con tirador negro",

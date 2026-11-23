@@ -11,10 +11,11 @@ import { Reveal, RevealGroup, RevealItem } from "@/components/motion/reveal";
 import { WorksGrid } from "@/components/works/works-grid";
 import { FaqSection } from "@/components/home/faq-section";
 import { servicePhotos } from "@/content/images";
-import { services, serviceBySlug } from "@/content/services";
-import { faqs } from "@/content/faq";
-import { site } from "@/content/site";
-import { works } from "@/content/works";
+import { services } from "@/content/services";
+import { categories } from "@/lib/pricing/categories";
+import { resolverTarifas } from "@/lib/pricing/tarifas";
+import { leerTarifas, obtenerWeb } from "@/lib/web/datos";
+import { esServicio, faqsPorIndice, trabajosDeServicio } from "@/lib/web/mezclar";
 
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
@@ -22,7 +23,8 @@ export function generateStaticParams() {
 
 export async function generateMetadata(props: PageProps<"/servicios/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
-  const s = serviceBySlug(slug);
+  const { services } = await obtenerWeb();
+  const s = services.find((x) => x.slug === slug);
   if (!s) return {};
   return {
     title: s.seoTitle,
@@ -72,10 +74,16 @@ function ServiceSkeleton() {
 
 async function ServiceContent({ params }: { params: PageProps<"/servicios/[slug]">["params"] }) {
   const { slug } = await params;
-  const service = serviceBySlug(slug);
+  if (!esServicio(slug)) notFound();
+  const [web, tarifas] = await Promise.all([obtenerWeb(), leerTarifas()]);
+  const { site, services, faqs } = web;
+  const service = services.find((s) => s.slug === slug);
   if (!service) notFound();
   const photos = servicePhotos[service.slug];
   const others = services.filter((s) => s.slug !== service.slug);
+  // Si la categoría está oculta en la calculadora, el botón lleva a la calculadora sin preseleccionar.
+  const enCalculadora = resolverTarifas(categories, tarifas).categorias[service.slug]?.activo !== false;
+  const phone = site.phones[0];
 
   return (
     <>
@@ -89,12 +97,14 @@ async function ServiceContent({ params }: { params: PageProps<"/servicios/[slug]
         ]}
       >
         <Reveal delay={0.3} className="mt-8 flex flex-wrap gap-3">
-          <CtaLink href={`/presupuesto?servicio=${service.slug}`} icon={<Calculator />}>
+          <CtaLink href={enCalculadora ? `/presupuesto?servicio=${service.slug}` : "/presupuesto"} icon={<Calculator />}>
             Calcular presupuesto
           </CtaLink>
-          <CtaLink href={`tel:${site.phones[0].tel}`} variant="outline" icon={<Phone />}>
-            Llamar al {site.phones[0].display}
-          </CtaLink>
+          {phone && (
+            <CtaLink href={`tel:${phone.tel}`} variant="outline" icon={<Phone />}>
+              Llamar al {phone.display}
+            </CtaLink>
+          )}
         </Reveal>
       </PageHeader>
 
@@ -156,12 +166,12 @@ async function ServiceContent({ params }: { params: PageProps<"/servicios/[slug]
             </Link>
           </div>
           <div className="mt-10 [&_article]:border-cream-200/10 [&_article]:bg-navy-900 [&_h3]:text-cream-100">
-            <WorksGrid works={works.filter((w) => w.category === service.slug)} filter={false} />
+            <WorksGrid works={trabajosDeServicio(web, service.slug)} filter={false} />
           </div>
         </div>
       </section>
 
-      <FaqSection items={(faqFor[service.slug] ?? [0, 1, 2, 9]).map((i) => faqs[i])} />
+      <FaqSection items={faqsPorIndice(faqs, faqFor[service.slug] ?? [0, 1, 2, 9])} />
 
       <section className="pb-16 sm:pb-24 lg:pb-28">
         <div className="container-site">

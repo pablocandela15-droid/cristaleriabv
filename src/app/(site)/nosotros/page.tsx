@@ -6,13 +6,13 @@ import { NumberTicker } from "@/components/motion/number-ticker";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/reveal";
 import { TextReveal } from "@/components/motion/text-reveal";
 import { ContactCta } from "@/components/home/contact-cta";
-import { photos } from "@/content/images";
-import { site } from "@/content/site";
+import { site as defaultSite } from "@/content/site";
+import { obtenerWeb } from "@/lib/web/datos";
 import { team } from "@/content/team";
 
 export const metadata: Metadata = {
   title: "Sobre nosotros",
-  description: `${site.name}: más de 30 años de experiencia en cristalería, mamparas, espejos y cerramientos en el Baix Vinalopó. Conoce al equipo.`,
+  description: `${defaultSite.name}: más de 30 años de experiencia en cristalería, mamparas, espejos y cerramientos en el Baix Vinalopó. Conoce al equipo.`,
   alternates: { canonical: "/nosotros" },
 };
 
@@ -39,7 +39,8 @@ const initials = (name: string) =>
     .map((w) => w[0])
     .join("");
 
-export default function NosotrosPage() {
+export default async function NosotrosPage() {
+  const { site, photos } = await obtenerWeb();
   return (
     <>
       <PageHeader

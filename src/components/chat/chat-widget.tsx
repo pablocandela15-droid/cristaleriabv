@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowUp, Bot, X } from "lucide-react";
 import { callFunction, formulariosSupabase } from "@/lib/backend";
 import { localAnswer } from "@/components/chat/local-answer";
+import { useWeb } from "@/components/site/web-provider";
 import { whatsappLink } from "@/content/site";
 import { cn } from "@/lib/utils";
 
@@ -31,10 +32,12 @@ function newSessionId() {
 }
 
 /**
- * Asistente virtual. Responde en local con las preguntas frecuentes; con
- * NEXT_PUBLIC_FORMULARIOS_SUPABASE=1 usa la edge function `chat` (OpenAI).
+ * Asistente virtual. Responde en local con las preguntas frecuentes (las del
+ * panel si las hay); con NEXT_PUBLIC_FORMULARIOS_SUPABASE=1 usa la edge function
+ * `chat` (OpenAI).
  */
 export function ChatWidget() {
+  const web = useWeb();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([WELCOME]);
   const [input, setInput] = useState("");
@@ -74,7 +77,7 @@ export function ChatWidget() {
         reply = res.reply;
       } else {
         await new Promise((r) => setTimeout(r, 450));
-        reply = localAnswer(content);
+        reply = localAnswer(content, web);
       }
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     } catch {
@@ -83,7 +86,7 @@ export function ChatWidget() {
         {
           role: "assistant",
           content:
-            "Vaya, ahora mismo no puedo responder. Si quieres, escríbenos por WhatsApp o llámanos al 650 06 63 23 y te atendemos enseguida.",
+            `Vaya, ahora mismo no puedo responder. Si quieres, escríbenos por WhatsApp${web.site.phones[0] ? ` o llámanos al ${web.site.phones[0].display}` : ""} y te atendemos enseguida.`,
         },
       ]);
     } finally {
@@ -194,7 +197,7 @@ export function ChatWidget() {
               </form>
               <p className="mt-2 text-center text-[11.5px] text-ink-soft">
                 Respuestas orientativas.{" "}
-                <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                <a href={whatsappLink(undefined, web.site.whatsapp)} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
                   Hablar con una persona
                 </a>
               </p>

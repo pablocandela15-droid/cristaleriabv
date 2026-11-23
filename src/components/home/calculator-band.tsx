@@ -7,9 +7,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { NumberTicker } from "@/components/motion/number-ticker";
 import { Reveal } from "@/components/motion/reveal";
 import { ServiceIcon } from "@/components/site/service-icon";
-import { services, type ServiceSlug } from "@/content/services";
-import { categories, type CategoryId } from "@/lib/pricing/categories";
-import { DEFAULT_PRICING } from "@/lib/pricing/config";
+import { useWeb } from "@/components/site/web-provider";
+import type { ServiceSlug } from "@/content/services";
+import type { CategoryId } from "@/lib/pricing/categories";
+import { usePricing } from "@/lib/pricing/use-pricing";
 import { cn } from "@/lib/utils";
 
 /** Ejemplos con medidas habituales para mostrar el orden de precio de cada servicio. */
@@ -22,12 +23,20 @@ const examples: { id: CategoryId; label: string; values: Record<string, unknown>
   { id: "armarios", label: "Armario de 150 cm, 2 puertas", values: {} },
 ];
 
-/** Banda de la home que adelanta la calculadora con ejemplos de precio. */
+/**
+ * Banda de la home que adelanta la calculadora con ejemplos de precio, con las
+ * tarifas vigentes (las del panel si las hay). Solo salen las categorías visibles.
+ */
 export function CalculatorBand() {
-  const [active, setActive] = useState<CategoryId>("mamparas");
-  const ex = examples.find((e) => e.id === active)!;
-  const def = categories[active];
-  const total = def.quote({ ...def.defaults, ...ex.values } as never, DEFAULT_PRICING).total;
+  const { services } = useWeb();
+  const { precios, categorias } = usePricing();
+  const visible = examples.filter((e) => categorias[e.id].activo);
+  const [selected, setSelected] = useState<CategoryId>("mamparas");
+  const ex = visible.find((e) => e.id === selected) ?? visible[0];
+  if (!ex) return null;
+  const active = ex.id;
+  const def = categorias[active];
+  const total = def.quote({ ...def.defaults, ...ex.values } as never, precios).total;
 
   return (
     <section className="relative overflow-hidden bg-navy-950 py-16 text-cream-100 sm:py-24 lg:py-28">
@@ -47,12 +56,12 @@ export function CalculatorBand() {
           </Reveal>
           <Reveal delay={0.15}>
             <div className="mt-8 flex flex-wrap gap-2" role="tablist" aria-label="Ejemplos de precio">
-              {examples.map((e) => (
+              {visible.map((e) => (
                 <button
                   key={e.id}
                   role="tab"
                   aria-selected={e.id === active}
-                  onClick={() => setActive(e.id)}
+                  onClick={() => setSelected(e.id)}
                   className={cn(
                     "inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm transition-all",
                     e.id === active
@@ -60,8 +69,8 @@ export function CalculatorBand() {
                       : "border-cream-200/25 text-cream-100/85 hover:border-cream-200/60",
                   )}
                 >
-                  <ServiceIcon slug={categories[e.id].service as ServiceSlug} className="size-4" />
-                  {services.find((s) => s.slug === categories[e.id].service)?.name}
+                  <ServiceIcon slug={categorias[e.id].service as ServiceSlug} className="size-4" />
+                  {services.find((s) => s.slug === categorias[e.id].service)?.name ?? categorias[e.id].name}
                 </button>
               ))}
             </div>

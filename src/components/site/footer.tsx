@@ -2,8 +2,8 @@ import Link from "next/link";
 import { cacheLife } from "next/cache";
 import { ArrowUpRight, Calculator, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Logo } from "@/components/site/logo";
-import { fullAddress, mainNav, site, whatsappLink } from "@/content/site";
-import { services } from "@/content/services";
+import { mainNav, mapsLink, whatsappLink } from "@/content/site";
+import { obtenerWeb } from "@/lib/web/datos";
 
 async function CopyrightYear() {
   "use cache";
@@ -24,7 +24,9 @@ const link = "inline-flex min-h-10 items-center text-[15px] text-cream-100/75 tr
  * Pie de página: marca y accesos rápidos, navegación, servicios y contacto en
  * columnas alineadas; debajo, la barra legal.
  */
-export function Footer() {
+export async function Footer() {
+  const { site, services } = await obtenerWeb();
+  const weekdays = site.hours[0];
   return (
     <footer className="relative overflow-hidden bg-navy-950 text-cream-100">
       <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 size-[34rem] rounded-full bg-navy-700/25 blur-3xl" />
@@ -46,7 +48,7 @@ export function Footer() {
                 <Calculator aria-hidden className="size-4" /> Calcular presupuesto
               </Link>
               <a
-                href={whatsappLink("Hola, me gustaría pedir información.")}
+                href={whatsappLink("Hola, me gustaría pedir información.", site.whatsapp)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-cream-200/25 px-4 text-sm font-medium text-cream-100 transition-colors hover:border-cream-200/60"
@@ -101,7 +103,7 @@ export function Footer() {
                       <Phone aria-hidden className="size-4" />
                     </span>
                     <span>
-                      <span className="block text-xs text-cream-100/50">{p.label}</span>
+                      {p.label && <span className="block text-xs text-cream-100/50">{p.label}</span>}
                       <span className="text-cream-100">{p.display}</span>
                     </span>
                   </a>
@@ -117,7 +119,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`}
+                  href={mapsLink(site)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group flex items-start gap-3 transition-colors hover:text-cream-100"
@@ -133,16 +135,18 @@ export function Footer() {
                   </span>
                 </a>
               </li>
-              <li className="flex items-start gap-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-cream-200/10 text-gold-300">
-                  <Clock aria-hidden className="size-4" />
-                </span>
-                <span className="pt-1.5">
-                  Lunes a viernes
-                  <br />
-                  {site.hours[0].time}
-                </span>
-              </li>
+              {weekdays && (
+                <li className="flex items-start gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-cream-200/10 text-gold-300">
+                    <Clock aria-hidden className="size-4" />
+                  </span>
+                  <span className="pt-1.5">
+                    {weekdays.days}
+                    <br />
+                    {weekdays.time}
+                  </span>
+                </li>
+              )}
             </ul>
           </div>
         </div>

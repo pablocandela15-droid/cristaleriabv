@@ -8,11 +8,12 @@ import { motion, useMotionValueEvent, useScroll } from "motion/react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Logo } from "@/components/site/logo";
 import { ServiceIcon } from "@/components/site/service-icon";
-import { mainNav, site } from "@/content/site";
-import { services } from "@/content/services";
+import { useWeb } from "@/components/site/web-provider";
+import { mainNav } from "@/content/site";
 import { cn } from "@/lib/utils";
 
 export function Header() {
+  const { site, services } = useWeb();
   const pathname = usePathname();
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
@@ -90,13 +91,15 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <a
-              href={`tel:${phone.tel}`}
-              className="hidden min-h-11 items-center gap-2 rounded-lg bg-navy-900 px-4 text-[15px] font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800 sm:inline-flex"
-            >
-              <Phone aria-hidden className="size-4 text-cream-200" />
-              {phone.display}
-            </a>
+            {phone && (
+              <a
+                href={`tel:${phone.tel}`}
+                className="hidden min-h-11 items-center gap-2 rounded-lg bg-navy-900 px-4 text-[15px] font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800 sm:inline-flex"
+              >
+                <Phone aria-hidden className="size-4 text-cream-200" />
+                {phone.display}
+              </a>
+            )}
 
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger
@@ -143,7 +146,7 @@ export function Header() {
                       className="flex min-h-12 items-center justify-center gap-2 rounded-lg bg-navy-900 text-cream-100"
                     >
                       <Phone aria-hidden className="size-4 text-cream-200" />
-                      {p.label}: {p.display}
+                      {p.label ? `${p.label}: ${p.display}` : p.display}
                     </a>
                   ))}
                 </div>
