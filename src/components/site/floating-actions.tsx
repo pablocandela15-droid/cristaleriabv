@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 export function FloatingActions() {
   const { site } = useWeb();
   const pathname = usePathname();
-  if (pathname.startsWith("/admin")) return null;
   // En la calculadora, en móvil y tablet, la barra inferior de precio ocupa ese
   // espacio y los botones taparían opciones: se muestran solo en escritorio.
   const inCalculator = pathname.startsWith("/presupuesto");

@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+/** Panel de administración (repo admin-cristaleriabv): /admin redirige allí. */
+const PANEL_URL = "https://admin-cristaleriabv.vercel.app";
+
 /** Fotos del panel: bucket público `web-fotos` del Supabase del proyecto. */
 const FOTOS_PATH = "/storage/v1/object/public/web-fotos/**";
 const SUPABASE_PROYECTO = "gorekooabfhqudeshtgq.supabase.co";
@@ -25,6 +28,12 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   images: {
     remotePatterns: supabaseRemotePatterns(),
+  },
+  async redirects() {
+    return [
+      { source: "/admin", destination: PANEL_URL, permanent: false },
+      { source: "/admin/:path*", destination: PANEL_URL, permanent: false },
+    ];
   },
   turbopack: {
     rules: {
