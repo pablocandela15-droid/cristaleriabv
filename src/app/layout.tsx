@@ -3,6 +3,7 @@ import { Fraunces, Instrument_Sans } from "next/font/google";
 import localFont from "next/font/local";
 import { mapsLink, type Site } from "@/content/site";
 import { leerTarifas, obtenerWeb } from "@/lib/web/datos";
+import { Analytics } from "@vercel/analytics/next";
 import { WebProvider } from "@/components/site/web-provider";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -115,6 +116,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <WebProvider value={{ site, services, faqs, tarifas }}>
           <Providers>{children}</Providers>
         </WebProvider>
+        {/* Vercel Web Analytics (visitas sin cookies) para Tráfico web: solo en Vercel, donde existe /_vercel/insights. */}
+        {process.env.VERCEL === "1" && <Analytics />}
       </body>
     </html>
   );
