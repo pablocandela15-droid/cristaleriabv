@@ -69,6 +69,8 @@ Con Supabase configurado, lo editable desde el panel se mezcla **por encima** de
 
 Sin las variables de Supabase la web es exactamente la del código: contacto y reserva por WhatsApp, asistente con respuestas locales, tarifas de `config.ts` y sin «Solicitar presupuesto» (solo WhatsApp). Al ser `NEXT_PUBLIC_*`, se fijan al compilar: después de cambiarlas en Vercel hay que volver a desplegar.
 
+**En producción** (proyecto `cristaleriabv` de Vercel) están puestas desde el 24/11/2026 `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (producción, preview y desarrollo); `NEXT_PUBLIC_FORMULARIOS_SUPABASE` no está puesta. La base de datos y la función `web-solicitud-presupuesto` llegaron con la v1.2.x del panel.
+
 ## Supabase
 
 La base de datos, las migraciones, el bucket de fotos y la edge function `web-solicitud-presupuesto` viven en el repo del panel, **`admin-cristaleriabv`**. La carpeta `supabase/` de este repo es el backend antiguo de la web y **no se aplica**; ver [`supabase/README.md`](supabase/README.md).
