@@ -1,6 +1,6 @@
 # Cristalería Baix Vinalopó · web
 
-Web corporativa con calculadora de presupuestos, solicitud de presupuesto, reserva de visita técnica y asistente virtual. Los textos, fotos, «books» de trabajos, precios y opciones de la calculadora se editan desde el **panel de administración** (repo [`admin-cristaleriabv`](https://admin-cristaleriabv.vercel.app)); `/admin` redirige allí.
+Web corporativa con calculadora de presupuestos, solicitud de presupuesto, reserva de visita técnica y asistente virtual. Los textos, fotos de los trabajos (por tipo), precios y opciones de la calculadora se editan desde el **panel de administración** (repo [`admin-cristaleriabv`](https://admin-cristaleriabv.vercel.app)); `/admin` redirige allí.
 
 - **Diseño:** estructura de la plantilla Formis (fondo crema, tipografía Cabinet Grotesk + Instrument Sans + Fraunces) con los colores del logo (marino `#0A2A48` y crema `#F2E8C8`) y un estilo *Liquid Glass* recomendado por UI UX Pro Max. Sistema de diseño en [`design-system/MASTER.md`](design-system/MASTER.md).
 - **Tecnología:** Next.js 16 (App Router, Cache Components), Tailwind CSS 4, shadcn/ui (Base UI), Motion. Contenido editable en Supabase (el del panel; la web solo lee con la clave pública). Alojamiento en Vercel.
@@ -30,8 +30,8 @@ Con Supabase configurado, lo editable desde el panel se mezcla **por encima** de
 | Servicios (textos y SEO) | `web_contenido` → `servicios` | `src/content/services.ts` |
 | Preguntas frecuentes (también las del asistente) | `web_contenido` → `faq` | `src/content/faq.ts` |
 | Fotos de portada, «Quiénes somos» y contacto | `web_contenido` → `imagenes` (fotos del bucket `web-fotos`) | `public/images/credits.json` |
-| «Books» de trabajos (/trabajos y galería de cada servicio) | `web_albumes` + `web_fotos` | `src/content/works.ts` |
-| Trabajos de la portada | `web_fotos` con `destacada` | `featuredWorks` en `src/content/works.ts` |
+| Fotos de los trabajos, por tipo (/trabajos y galería de cada servicio) | `web_albumes` + `web_fotos` | `src/content/works.ts` |
+| Trabajos de la portada («Espacios que se llenan de luz») | `web_fotos` con `destacada` (o la primera de cada tipo) | `featuredWorks` en `src/content/works.ts` |
 | Tarifas de la calculadora | `web_tarifas.config` | `src/lib/pricing/config.ts` |
 | Textos, opciones («formas»…), campos y categorías visibles de la calculadora | `web_tarifas.catalogo` | `src/lib/pricing/categories.ts` |
 | Proceso de trabajo | — | `src/content/process.ts` |
@@ -46,7 +46,7 @@ Con Supabase configurado, lo editable desde el panel se mezcla **por encima** de
 - `src/lib/web/datos.ts` (servidor): consultas REST a Supabase con la clave pública, en caché con `"use cache"` + `cacheLife("minutes")` (revalidación cada 60 s). Si no hay variables, la tabla no existe (404), hay un error o tarda más de 5 s, devuelve `null`.
 - `src/lib/web/mezclar.ts`: mezcla cada bloque sobre `src/content/*` y descarta lo mal formado (nunca rompe una página).
 - `src/components/site/web-provider.tsx`: pasa los datos mezclados (negocio, servicios, FAQ y la fila de tarifas) a los componentes de cliente; `usePricing()` (`src/lib/pricing/use-pricing.ts`) devuelve precios y categorías ya resueltos.
-- Reglas de fotos: con al menos un álbum publicado con fotos, /trabajos muestra los «books»; si no, la galería del código. La galería de cada servicio usa las fotos de los álbumes con ese `servicio` (si no hay, la del código) y la portada, las fotos `destacada` (si no hay, las del código).
+- Reglas de fotos (`src/lib/web/mezclar.ts`): en el panel se suben las fotos a cada tipo de trabajo (un álbum por tipo, `trabajos-<servicio>`; también cuentan los álbumes antiguos con ese `servicio`). /trabajos enseña siempre la galería con el filtro por tipo (`trabajosPorTipo`): cada tipo con sus fotos del panel o, si no tiene, las de ejemplo del código, y al final las de los álbumes sin servicio (solo en «Todos»). La galería de cada servicio usa las mismas fotos de su tipo (`trabajosDeServicio`). La portada usa las fotos `destacada` (hasta 8); si no hay, la primera foto del panel de cada tipo completando hasta 4 con las del código, y sin fotos del panel, las del código.
 
 ## Funcionalidades
 
