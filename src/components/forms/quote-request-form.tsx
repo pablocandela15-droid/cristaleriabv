@@ -7,6 +7,7 @@ import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
 import { useWeb } from "@/components/site/web-provider";
 import { whatsappLink } from "@/content/site";
 import { submitQuoteRequest, validators } from "@/lib/requests";
+import { useFormularioActividad } from "@/lib/actividad/react";
 
 type Errors = Partial<Record<"name" | "phone" | "email" | "consent", string>>;
 
@@ -37,6 +38,7 @@ export function QuoteRequestForm({
     kind: "idle",
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const { conectar, onFocusCapture, errorValidacion, envio } = useFormularioActividad("presupuesto");
 
   const datos = [
     `Nombre: ${form.name.trim()}`,
@@ -57,7 +59,11 @@ export function QuoteRequestForm({
     };
     const clean = Object.fromEntries(Object.entries(e).filter(([, v]) => v)) as Errors;
     setErrors(clean);
-    if (Object.keys(clean).length) return;
+    if (Object.keys(clean).length) {
+      errorValidacion(Object.keys(clean).length);
+      return;
+    }
+    envio();
     setState({ kind: "sending" });
     const res = await submitQuoteRequest({
       nombre: form.name.trim(),
@@ -102,7 +108,7 @@ export function QuoteRequestForm({
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="relative space-y-4">
+    <form ref={conectar} onFocusCapture={onFocusCapture} onSubmit={onSubmit} noValidate className="relative space-y-4">
       <Honeypot value={form.website} onChange={(v) => set("website", v)} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre" required error={errors.name}>

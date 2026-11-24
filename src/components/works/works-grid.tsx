@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { ArrowUpRight, ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { useWeb } from "@/components/site/web-provider";
 import type { ServiceSlug } from "@/content/services";
 import type { Work } from "@/content/works";
 import { cn } from "@/lib/utils";
+import { registrar } from "@/lib/actividad";
 
 function useServiceName() {
   const { services } = useWeb();
@@ -106,6 +107,19 @@ export function WorkLightbox({
   const zoom = index != null ? works[index] : undefined;
   const many = works.length > 1;
   const go = (delta: number) => index != null && onIndex((index + delta + works.length) % works.length);
+
+  // Actividad para Logs del panel: qué trabajos (book o servicio) se miran, sin nada del visitante.
+  const anterior = useRef<number | null>(null);
+  useEffect(() => {
+    const previo = anterior.current;
+    anterior.current = index;
+    if (index === previo) return;
+    const trabajo = index != null ? works[index] : previo != null ? works[previo] : undefined;
+    const objetivo = caption ?? trabajo?.category ?? undefined;
+    const accion =
+      index == null ? "cerrar" : previo == null ? "abrir" : index === (previo + 1) % works.length ? "siguiente" : "anterior";
+    registrar("media", { accion, objetivo, props: { medio: "foto", posicion: index != null ? index + 1 : undefined } });
+  }, [index, works, caption]);
 
   useEffect(() => {
     if (index == null || !many) return;

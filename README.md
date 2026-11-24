@@ -56,6 +56,7 @@ Con Supabase configurado, lo editable desde el panel se mezcla **por encima** de
 - **Reserva de visita técnica y contacto:** abren WhatsApp con los datos ya escritos. Las edge functions antiguas `book-appointment` y `contact` (carpeta `supabase/` de este repo) solo se usan con `NEXT_PUBLIC_FORMULARIOS_SUPABASE=1`.
 - **Asistente virtual:** responde en local con las preguntas frecuentes (las del panel si las hay). Con `NEXT_PUBLIC_FORMULARIOS_SUPABASE=1` usa la edge function antigua `chat` (OpenAI).
 - **Panel:** `/admin` redirige a https://admin-cristaleriabv.vercel.app (repo `admin-cristaleriabv`).
+- **Estadísticas sin cookies** (para **Tráfico web** y **Super Admin › Logs** del panel; ver más abajo).
 - **SEO:** metadatos por página, `sitemap.xml`, `robots.txt` y datos estructurados `HomeAndConstructionBusiness` (con los datos del panel).
 
 ## Variables de entorno
@@ -66,10 +67,38 @@ Con Supabase configurado, lo editable desde el panel se mezcla **por encima** de
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto de Supabase del panel (`https://gorekooabfhqudeshtgq.supabase.co`) |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave pública (`sb_publishable_…`) del mismo proyecto |
 | `NEXT_PUBLIC_FORMULARIOS_SUPABASE` | `1` solo si existen las edge functions antiguas `contact`, `book-appointment` y `chat`. Por defecto apagado |
+| `NEXT_PUBLIC_ACTIVIDAD_WEB` | `off` apaga la actividad para Logs aunque esté `NEXT_PUBLIC_SUPABASE_URL`. Por defecto encendida |
 
 Sin las variables de Supabase la web es exactamente la del código: contacto y reserva por WhatsApp, asistente con respuestas locales, tarifas de `config.ts` y sin «Solicitar presupuesto» (solo WhatsApp). Al ser `NEXT_PUBLIC_*`, se fijan al compilar: después de cambiarlas en Vercel hay que volver a desplegar.
 
 **En producción** (proyecto `cristaleriabv` de Vercel) están puestas desde el 24/11/2026 `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (producción, preview y desarrollo); `NEXT_PUBLIC_FORMULARIOS_SUPABASE` no está puesta. La base de datos y la función `web-solicitud-presupuesto` llegaron con la v1.2.x del panel.
+
+## Estadísticas sin cookies (Tráfico web y Logs del panel)
+
+La web no usa cookies ni guarda nada en el navegador para medir. Hay dos piezas:
+
+- **Vercel Web Analytics** (`<Analytics />` de `@vercel/analytics` en `src/app/layout.tsx`, solo cuando se compila en Vercel): visitas, páginas, procedencia, país y dispositivo, agregadas y sin cookies. El panel las copia cada noche a **Tráfico web** (función `sync-trafico-web`). Hay que activarlo en Vercel: proyecto `cristaleriabv` › *Analytics* › *Enable*.
+- **Actividad propia** (`src/lib/actividad/`): eventos en lotes cada 5 s (y con `sendBeacon` al ocultar o cerrar la página), en `text/plain` y sin cabeceras propias, a la edge function `registrar-actividad-web` del panel (`<NEXT_PUBLIC_SUPABASE_URL>/functions/v1/registrar-actividad-web`). Los ve el super admin en **Super Admin › Logs** (recorridos, errores, incidencias) y, agregados, quien ve **Tráfico web** (comportamiento). Contrato y detalles: `docs/LOGS-WEB.md` del panel.
+
+Qué se manda:
+
+| Evento | Cuándo |
+| --- | --- |
+| `pagina_vista` / `pagina_salida` / `scroll` / `carga_pagina` | Cada página (también las navegaciones dentro de la web, `src/components/site/actividad-web.tsx`), su tiempo activo, hasta dónde se baja (25/50/75/100 %) y la velocidad de carga |
+| `contacto` | Clic en un enlace `tel:`, WhatsApp, `mailto:`, mapa o red social (solo el canal y la zona: nunca el número) |
+| `clic` | Llamadas a la acción hacia `/presupuesto` o `/contacto` y elementos con `data-actividad` («Solicitar presupuesto», «Reservar visita técnica»…) |
+| `calculadora` | Inicio, servicio elegido, paso, precio calculado (importe orientativo, IVA incluido) y vuelta a empezar. Nunca medidas ni opciones |
+| `formulario` | Inicio, error de validación, envío y abandono de los formularios de presupuesto, contacto y visita (solo cuántos campos hay rellenos) |
+| `presupuesto_solicitado` / `presupuesto_rechazado` | Respuesta de `web-solicitud-presupuesto` (la conversión) |
+| `contacto_enviado` | Formulario de contacto o de visita enviado (por WhatsApp o al servidor) |
+| `media` / `chat` | Fotos de trabajos que se abren y se pasan; abrir el asistente, preguntar y responder (nunca el texto) |
+| `peticion` / `error_*` | Llamadas a las edge functions (código y duración) y errores: JavaScript, promesas, recursos, peticiones fallidas y 404 |
+
+- Sin `NEXT_PUBLIC_SUPABASE_URL` (o con `NEXT_PUBLIC_ACTIVIDAD_WEB=off`) no se registra nada ni se añade ningún listener: la web es la de siempre.
+- Con **«No rastrear»** o **Global Privacy Control** solo se mandan los errores. La sesión es un id aleatorio en memoria (al recargar empieza otra) y no hay id de visitante.
+- Se arranca en `src/instrumentation-client.ts` (antes de la hidratación, para ver los errores de la carga). Nunca rompe la web: todo va en `try/catch` y, si la función no responde (por ejemplo, antes de que el panel la publique: 404), deja de intentarlo en esa página.
+- **Tráfico interno**: abre la web una vez con `?bv_interno=1` en tu navegador para no contarte en las estadísticas (se guarda solo esa marca, `bv_interno`, en ese navegador); `?bv_interno=0` la quita.
+- Las páginas de privacidad y cookies explican todo esto.
 
 ## Supabase
 

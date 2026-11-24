@@ -24,6 +24,12 @@ function supabaseRemotePatterns() {
 }
 
 const nextConfig: NextConfig = {
+  // Versión (commit) y despliegue con los que se construye, para la actividad que la web manda a Logs del panel
+  // (src/lib/actividad): así el panel sabe si un error es de una versión antigua tras publicar.
+  env: {
+    ACTIVIDAD_VERSION: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 12),
+    ACTIVIDAD_DESPLIEGUE: process.env.VERCEL_DEPLOYMENT_ID ?? "",
+  },
   cacheComponents: true,
   partialPrefetching: true,
   images: {

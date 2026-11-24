@@ -1,3 +1,5 @@
+import { registrarPeticion } from "@/lib/actividad";
+
 /**
  * Acceso a Supabase con la clave pública (lectura del contenido de la web y
  * edge functions). Si las variables de entorno no están configuradas,
@@ -40,15 +42,27 @@ export class BackendError extends Error {
   }
 }
 
-/** Llama a una edge function y devuelve su JSON. Lanza BackendError si falla. */
+/**
+ * Llama a una edge function y devuelve su JSON. Lanza BackendError si falla.
+ * Apunta la llamada (endpoint, código y duración; nunca el contenido) para Logs del panel.
+ */
 export async function callFunction<T>(name: string, body: unknown, signal?: AbortSignal): Promise<T> {
   if (!isBackendConfigured) throw new BackendError("Backend no configurado");
-  const res = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...publicHeaders() },
-    body: JSON.stringify(body),
-    signal,
-  });
+  const inicio = Date.now();
+  let res: Response;
+  try {
+    res = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...publicHeaders() },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (e) {
+    const motivo = e instanceof DOMException && e.name === "TimeoutError" ? "tiempo agotado" : e instanceof DOMException && e.name === "AbortError" ? "cancelada" : "sin conexión";
+    if (motivo !== "cancelada") registrarPeticion(name, 0, Date.now() - inicio, motivo);
+    throw e;
+  }
+  registrarPeticion(name, res.status, Date.now() - inicio);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new BackendError((data as { error?: string }).error ?? "No se pudo completar la solicitud", res.status);
