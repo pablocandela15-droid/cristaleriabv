@@ -22,6 +22,7 @@ export function FloatingActions() {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Escríbenos por WhatsApp"
+        data-zona="flotante"
         className={cn(
           "fixed bottom-4 left-4 z-40 size-14 place-items-center rounded-full bg-whatsapp text-white shadow-[0_12px_30px_-10px_rgb(31_143_78/0.7)] transition-transform duration-300 hover:scale-105 sm:bottom-6 sm:left-6 print:hidden",
           inCalculator ? "hidden lg:grid" : "grid",

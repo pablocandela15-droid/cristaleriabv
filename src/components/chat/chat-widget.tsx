@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowUp, Bot, X } from "lucide-react";
 import { callFunction, formulariosSupabase } from "@/lib/backend";
 import { localAnswer } from "@/components/chat/local-answer";
+import { registrar } from "@/lib/actividad";
 import { useWeb } from "@/components/site/web-provider";
 import { whatsappLink } from "@/content/site";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,14 @@ export function ChatWidget() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
+  // Actividad para Logs del panel: abrir, preguntar, responder y cerrar (nunca el texto de las preguntas).
+  const abierto = useRef(false);
+  useEffect(() => {
+    if (open === abierto.current) return;
+    abierto.current = open;
+    registrar("chat", { accion: open ? "abrir" : "cerrar" });
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
@@ -66,6 +75,7 @@ export function ChatWidget() {
     setMessages(next);
     setInput("");
     setLoading(true);
+    registrar("chat", { accion: "mensaje" });
     try {
       let reply: string;
       if (formulariosSupabase) {
@@ -80,7 +90,9 @@ export function ChatWidget() {
         reply = localAnswer(content, web);
       }
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      registrar("chat", { accion: "respuesta", props: { codigo: formulariosSupabase ? "servidor" : "local" } });
     } catch {
+      registrar("chat", { accion: "error", props: { codigo: formulariosSupabase ? "servidor" : "local" } });
       setMessages((m) => [
         ...m,
         {

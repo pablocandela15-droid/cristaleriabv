@@ -2,10 +2,12 @@ import { Calculator, Home } from "lucide-react";
 import { CtaLink } from "@/components/site/cta";
 import { Header } from "@/components/site/header";
 import { Footer } from "@/components/site/footer";
+import { Registrar404 } from "@/components/site/registrar-404";
 
 export default function NotFound() {
   return (
     <>
+      <Registrar404 />
       <Header />
       <main className="flex-1">
         <section className="relative overflow-hidden py-28 sm:py-36">

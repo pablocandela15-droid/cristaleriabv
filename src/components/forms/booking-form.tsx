@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ChoiceChips, Field, TextArea, TextInput } from "@/components/forms/fields";
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
 import { submitAppointment, validators, type AppointmentRequest } from "@/lib/requests";
+import { useFormularioActividad } from "@/lib/actividad/react";
 import { formulariosSupabase } from "@/lib/backend";
 import { useWeb } from "@/components/site/web-provider";
 import type { TravelResult } from "@/components/tools/travel-cost";
@@ -52,6 +53,7 @@ export function BookingForm({
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
   const min = useMinDate();
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const { conectar, onFocusCapture, errorValidacion, envio } = useFormularioActividad("visita");
 
   function validate(): Errors {
     const e: Errors = {
@@ -72,7 +74,11 @@ export function BookingForm({
     ev.preventDefault();
     const e = validate();
     setErrors(e);
-    if (Object.keys(e).length) return;
+    if (Object.keys(e).length) {
+      errorValidacion(Object.keys(e).length);
+      return;
+    }
+    envio();
     setState("sending");
     const res = await submitAppointment({
       name: form.name.trim(),
@@ -119,7 +125,7 @@ export function BookingForm({
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="relative space-y-4">
+    <form ref={conectar} onFocusCapture={onFocusCapture} onSubmit={onSubmit} noValidate className="relative space-y-4">
       <Honeypot value={form.website} onChange={(v) => set("website", v)} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre" required error={errors.name}>

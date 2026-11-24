@@ -1,5 +1,6 @@
 import { BackendError, callFunction, formulariosSupabase, isBackendConfigured } from "@/lib/backend";
 import { whatsappLink } from "@/content/site";
+import { registrarContactoEnviado, registrarSolicitudPresupuesto } from "@/lib/actividad";
 
 export type AppointmentRequest = {
   name: string;
@@ -64,10 +65,12 @@ export async function submitAppointment(r: AppointmentRequest, opts: Opts = {}):
   if (r.website) return { ok: true, via: "backend" };
   if (!formulariosSupabase) {
     window.open(whatsappLink(appointmentText(r), opts.whatsapp), "_blank", "noopener,noreferrer");
+    registrarContactoEnviado("visita", "whatsapp");
     return { ok: true, via: "whatsapp" };
   }
   try {
     const res = await callFunction<{ reference: string }>("book-appointment", r);
+    registrarContactoEnviado("visita", "servidor");
     return { ok: true, via: "backend", reference: res.reference };
   } catch (e) {
     return { ok: false, error: e instanceof BackendError ? e.message : "No se pudo enviar la solicitud" };
@@ -90,10 +93,12 @@ export async function submitContact(r: ContactRequest, opts: Opts = {}): Promise
       .filter((x): x is string => typeof x === "string")
       .join("\n");
     window.open(whatsappLink(text, opts.whatsapp), "_blank", "noopener,noreferrer");
+    registrarContactoEnviado("contacto", "whatsapp");
     return { ok: true, via: "whatsapp" };
   }
   try {
     await callFunction("contact", r);
+    registrarContactoEnviado("contacto", "servidor");
     return { ok: true, via: "backend" };
   } catch (e) {
     return { ok: false, error: e instanceof BackendError ? e.message : "No se pudo enviar el mensaje" };
@@ -145,8 +150,10 @@ export async function submitQuoteRequest(r: QuoteRequest): Promise<QuoteResult> 
   };
   try {
     const res = await callFunction<{ numero?: string }>("web-solicitud-presupuesto", body, AbortSignal.timeout(15000));
+    registrarSolicitudPresupuesto({ ok: true }, r.categoria);
     return { ok: true, numero: typeof res?.numero === "string" ? res.numero : undefined };
   } catch (e) {
+    registrarSolicitudPresupuesto({ ok: false, status: e instanceof BackendError ? (e.status ?? 0) : 0 }, r.categoria);
     if (e instanceof BackendError && e.status === 429) {
       return { ok: false, error: "Has enviado varias solicitudes seguidas. Espera un poco o escríbenos por WhatsApp." };
     }

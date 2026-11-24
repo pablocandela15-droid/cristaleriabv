@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,6 +40,7 @@ import {
 import { buildQuoteMessage, deliveryLabels, selectedOptions, type Delivery } from "@/lib/pricing/message";
 import { usePricing } from "@/lib/pricing/use-pricing";
 import { quoteRequestsEnabled } from "@/lib/requests";
+import { registrarCalculadora } from "@/lib/actividad";
 import { cn } from "@/lib/utils";
 
 const STEPS = ["Servicio", "Configura", "Visita y entrega", "Resumen"] as const;
@@ -97,18 +98,29 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
     requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
-  function go(next: number) {
+  // Actividad para Logs del panel: servicio, paso y precio calculado (nunca medidas ni datos del cliente).
+  const calculadoRef = useRef<string | null>(null);
+  useEffect(() => {
+    registrarCalculadora("inicio", { categoria: initial, paso: initial ? 2 : 1 });
+  }, [initial]);
+
+  function go(next: number, categoria: CategoryId | null = catId) {
+    if (next !== step) {
+      if (next === 0 && step > 0) registrarCalculadora("reiniciar", { categoria, paso: 1 });
+      else registrarCalculadora("paso", { categoria, paso: next + 1 });
+    }
     setStep(next);
     scrollTop();
   }
 
   function choose(id: CategoryId, keepMode = false) {
+    registrarCalculadora("categoria", { categoria: id, paso: 2 });
     setCatId(id);
     setValues({ ...categories[id].defaults });
     setModelId(null);
     if (!keepMode) setMode("medida");
     setShowErrors(false);
-    go(1);
+    go(1, id);
   }
 
   function update(id: string, value: Values[string]) {
@@ -127,6 +139,12 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
         setShowErrors(true);
         requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid=true], [role=alert]")?.scrollIntoView({ behavior: "smooth", block: "center" }));
         return;
+      }
+      // Precio calculado: el visitante ha configurado el trabajo y sigue adelante con ese precio (una vez por precio).
+      const clave = `${catId}|${quote.total}`;
+      if (calculadoRef.current !== clave) {
+        calculadoRef.current = clave;
+        registrarCalculadora("calculado", { categoria: catId, paso: 3, total: quote.total });
       }
     }
     go(Math.min(step + 1, 3));
@@ -150,7 +168,7 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
       : "";
 
   return (
-    <div ref={topRef} className="scroll-mt-28">
+    <div ref={topRef} className="scroll-mt-28" data-zona="calculadora">
       {/* Indicador de pasos */}
       <nav aria-label="Pasos de la calculadora" className="mb-8 print:hidden">
         <ol className="flex items-center gap-2 overflow-x-auto pb-1 sm:gap-3">
@@ -451,6 +469,7 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                       <button
                         type="button"
                         onClick={() => setRequestOpen(true)}
+                        data-actividad="solicitar-presupuesto"
                         className="inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy-900 px-4 font-medium text-cream-100 shadow-layered transition-colors hover:bg-navy-800"
                       >
                         <FileText aria-hidden className="size-5" /> Solicitar presupuesto
@@ -460,6 +479,7 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                       href={whatsappLink(message, site.whatsapp)}
                       target="_blank"
                       rel="noopener noreferrer"
+                      data-actividad="presupuesto-whatsapp"
                       className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-whatsapp px-4 font-medium text-white shadow-layered transition hover:brightness-110"
                     >
                       <Send aria-hidden className="size-5" /> Enviar por WhatsApp
@@ -467,6 +487,7 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                     <button
                       type="button"
                       onClick={() => setBookingOpen(true)}
+                      data-actividad="reservar-visita"
                       className={cn(
                         "inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 font-medium transition-colors",
                         quoteRequestsEnabled && quote.ready
@@ -479,6 +500,7 @@ function CalculatorInner({ initial }: { initial: CategoryId | null }) {
                     <button
                       type="button"
                       onClick={() => window.print()}
+                      data-actividad="imprimir-presupuesto"
                       className="inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border border-navy-900/15 bg-cream-50 px-4 font-medium text-navy-900 transition-colors hover:border-navy-900/35"
                     >
                       <Printer aria-hidden className="size-5" /> Imprimir / PDF

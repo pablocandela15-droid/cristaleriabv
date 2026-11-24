@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
 import { formulariosSupabase } from "@/lib/backend";
 import { submitContact, validators } from "@/lib/requests";
+import { useFormularioActividad } from "@/lib/actividad/react";
 import { useWeb } from "@/components/site/web-provider";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export function ContactForm({ dark }: { dark?: boolean }) {
   const [errors, setErrors] = useState<Errors>({});
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const { conectar, onFocusCapture, errorValidacion, envio } = useFormularioActividad("contacto");
 
   const label = cn("mb-1.5 block text-xs font-medium uppercase tracking-[0.12em]", dark ? "text-cream-100/80" : "text-navy-900");
   const input = cn(
@@ -44,7 +46,11 @@ export function ContactForm({ dark }: { dark?: boolean }) {
     };
     const clean = Object.fromEntries(Object.entries(e).filter(([, v]) => v)) as Errors;
     setErrors(clean);
-    if (Object.keys(clean).length) return;
+    if (Object.keys(clean).length) {
+      errorValidacion(Object.keys(clean).length);
+      return;
+    }
+    envio();
     setState("sending");
     const res = await submitContact({
       name: form.name.trim(),
@@ -75,7 +81,7 @@ export function ContactForm({ dark }: { dark?: boolean }) {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="relative space-y-4">
+    <form ref={conectar} onFocusCapture={onFocusCapture} onSubmit={onSubmit} noValidate className="relative space-y-4">
       <Honeypot value={form.website} onChange={(v) => set("website", v)} />
       <div>
         <label htmlFor="cf-service" className={label}>
