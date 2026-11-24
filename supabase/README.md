@@ -10,7 +10,7 @@ Con `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (proyect
 | --- | --- |
 | Tarifas y catálogo de la calculadora | `GET /rest/v1/web_tarifas?select=config,catalogo&id=eq.1` |
 | Negocio, servicios, FAQ e imágenes | `GET /rest/v1/web_contenido?select=clave,valor` |
-| «Books» de fotos | `GET /rest/v1/web_albumes?select=…,fotos:web_fotos(…)&publicado=eq.true&order=orden.asc&fotos.order=orden.asc` |
+| Fotos de los trabajos (un álbum por tipo y «books») | `GET /rest/v1/web_albumes?select=…,fotos:web_fotos(…)&publicado=eq.true&order=orden.asc&fotos.order=orden.asc` |
 | Fotos destacadas (portada) | `GET /rest/v1/web_fotos?select=…,album:web_albumes(slug,titulo,servicio)&destacada=eq.true&order=orden.asc` |
 | Fotos | `https://<proyecto>.supabase.co/storage/v1/object/public/web-fotos/<ruta>` |
 | Solicitud de presupuesto | `POST /functions/v1/web-solicitud-presupuesto` → `{ numero }` |

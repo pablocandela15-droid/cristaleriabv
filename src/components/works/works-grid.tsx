@@ -174,7 +174,10 @@ export function WorkLightbox({
   );
 }
 
-/** Galería de trabajos con filtro por categoría y ampliación de imagen. */
+/**
+ * Galería de trabajos con filtro por tipo y ampliación de imagen. Solo salen los filtros de los tipos que tienen
+ * fotos; las que no son de ningún tipo (`category` null) salen solo en «Todos».
+ */
 export function WorksGrid({
   works,
   filter = true,
@@ -191,12 +194,13 @@ export function WorksGrid({
   const [active, setActive] = useState<ServiceSlug | "todos">(initial);
   const [zoom, setZoom] = useState<number | null>(null);
   const shown = active === "todos" ? works : works.filter((w) => w.category === active);
+  const tipos = services.filter((s) => works.some((w) => w.category === s.slug)).map((s) => s.slug);
 
   return (
     <div>
       {filter && (
         <div role="tablist" aria-label="Filtrar trabajos" className="mb-8 flex flex-wrap gap-2">
-          {(["todos", ...services.map((s) => s.slug)] as const).map((slug) => (
+          {(["todos", ...tipos] as const).map((slug) => (
             <button
               key={slug}
               role="tab"

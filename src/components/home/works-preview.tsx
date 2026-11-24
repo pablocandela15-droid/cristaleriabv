@@ -5,7 +5,10 @@ import { CtaLink } from "@/components/site/cta";
 import { WorksGrid } from "@/components/works/works-grid";
 import { featuredWorks, type Work } from "@/content/works";
 
-/** Trabajos de la portada: las fotos destacadas del panel o, si no hay, la selección del código. */
+/**
+ * «Espacios que se llenan de luz» en la portada: las fotos ★ del panel o, si no hay, la primera de cada tipo de
+ * trabajo (ver `seleccionPortada` en src/lib/web/mezclar.ts); sin fotos del panel, la selección del código.
+ */
 export function WorksPreview({ works = featuredWorks }: { works?: Work[] }) {
   return (
     <section className="py-16 sm:py-24 lg:py-28">

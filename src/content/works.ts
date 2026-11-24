@@ -3,9 +3,11 @@ import { services, type ServiceSlug } from "@/content/services";
 
 /**
  * Galería de trabajos por defecto (fotos de stock de referencia). Con Supabase,
- * los «books» de fotos del panel (`web_albumes` / `web_fotos`) la sustituyen en
- * /trabajos, en la galería de cada servicio y en la portada (fotos destacadas).
- * `category` es null para fotos de álbumes sin servicio asociado.
+ * las fotos que se suben en Web › Fotos del panel a cada tipo de trabajo
+ * (`web_albumes` / `web_fotos`) sustituyen las de ese tipo en /trabajos, en la
+ * galería de su servicio y en la portada (ver src/lib/web/mezclar.ts). Un tipo
+ * sin fotos en el panel sigue con estas. `category` es null para fotos de
+ * álbumes sin servicio asociado.
  */
 export type Work = { title: string; category: ServiceSlug | null; photo: Photo };
 

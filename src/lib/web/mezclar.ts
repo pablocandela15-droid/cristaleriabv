@@ -179,7 +179,7 @@ export function mezclarImagenes(v: unknown, base: Photos = defaultPhotos): Photo
 }
 
 /* ------------------------------------------------------------------ */
-/* Álbumes («books») y fotos destacadas                                */
+/* Álbumes del panel (uno por tipo de trabajo y «books») y destacadas */
 /* ------------------------------------------------------------------ */
 
 export type AlbumWeb = {
@@ -190,6 +190,8 @@ export type AlbumWeb = {
   service: ServiceSlug | null;
   cover: Photo;
   works: Work[];
+  /** `orden` de cada foto en el panel (mismo índice que `works`): ordena las fotos de un tipo entre sus álbumes. */
+  orders: number[];
 };
 
 const porOrden = <T extends { orden?: number | null }>(a: T, b: T) => (a.orden ?? 0) - (b.orden ?? 0);
@@ -214,9 +216,14 @@ export function albumesDesdeFilas(filas: FilaAlbum[] | null): AlbumWeb[] {
       const service = esServicio(a.servicio) ? a.servicio : null;
       const fotos = (Array.isArray(a.fotos) ? [...a.fotos] : []).filter(esObjeto).sort(porOrden);
       const portada = fotos.find((f) => a.portada_foto_id && f.id === a.portada_foto_id);
-      const works = fotos.map((f) => fotoAWork(f, title, service)).filter(esWork);
+      const validas = fotos.flatMap((f) => {
+        const work = fotoAWork(f, title, service);
+        return work ? [{ work, orden: numero(f.orden) ?? 0 }] : [];
+      });
+      const works = validas.map((x) => x.work);
+      const orders = validas.map((x) => x.orden);
       const cover = (portada && fotoAWork(portada, title, service)?.photo) || works[0]?.photo;
-      return { id: String(a.id), slug: texto(a.slug), title, description: texto(a.descripcion), service, cover, works };
+      return { id: String(a.id), slug: texto(a.slug), title, description: texto(a.descripcion), service, cover, works, orders };
     })
     .filter((a): a is AlbumWeb => a.works.length > 0 && Boolean(a.cover));
 }
@@ -238,27 +245,60 @@ export function destacadasDesdeFilas(filas: FilaDestacada[] | null, maximo = 8):
 /* Todo junto                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Fotos del panel de un tipo de trabajo: las de todos los álbumes con ese servicio, por el `orden` de cada foto
+ * (el de su sección en Web › Fotos del panel) y, a igualdad, por el orden de los álbumes.
+ */
+function fotosPanelDeTipo(albums: AlbumWeb[], slug: ServiceSlug): Work[] {
+  return albums
+    .filter((a) => a.service === slug)
+    .flatMap((a, iAlbum) => a.works.map((work, i) => ({ work, orden: a.orders[i] ?? i, iAlbum, i })))
+    .sort((x, y) => x.orden - y.orden || x.iAlbum - y.iAlbum || x.i - y.i)
+    .map((x) => x.work);
+}
+
+/** Fotos de un tipo para la web: las del panel o, si aún no hay ninguna, las de ejemplo del código. */
+function fotosDeTipo(albums: AlbumWeb[], slug: ServiceSlug): Work[] {
+  const remotos = fotosPanelDeTipo(albums, slug);
+  return remotos.length ? remotos : defaultWorks.filter((w) => w.category === slug);
+}
+
+/**
+ * Selección de «Espacios que se llenan de luz» (portada): las destacadas del panel (★, hasta 8); si no hay, la
+ * primera foto del panel de cada tipo, completando hasta 4 con las del código de los tipos que falten (todo en el
+ * orden de los servicios); sin fotos del panel, la selección del código tal cual.
+ */
+export function seleccionPortada(albums: AlbumWeb[], destacadas: Work[]): Work[] {
+  if (destacadas.length) return destacadas;
+  const primeras = SLUGS.map((slug) => fotosPanelDeTipo(albums, slug)[0]).filter((w): w is Work => Boolean(w));
+  if (!primeras.length) return defaultFeatured;
+  const presentes = new Set(primeras.map((w) => w.category));
+  const relleno = defaultFeatured.filter((w) => !presentes.has(w.category)).slice(0, Math.max(0, 4 - primeras.length));
+  const posicion = (w: Work) => (w.category ? SLUGS.indexOf(w.category) : SLUGS.length);
+  return [...primeras, ...relleno].sort((a, b) => posicion(a) - posicion(b));
+}
+
 /** Datos de la web ya mezclados (serializables: se pueden pasar a componentes de cliente). */
 export type Web = {
   site: Site;
   services: Service[];
   faqs: Faq[];
   photos: Photos;
-  /** «Books» de Supabase. Vacío = se usa la galería del código. */
+  /** Álbumes publicados del panel (uno por tipo de trabajo y los «books» que haya). Vacío = fotos del código. */
   albums: AlbumWeb[];
-  /** Selección de la portada: destacadas de Supabase o, si no hay, las del código. */
+  /** Selección de la portada (ver `seleccionPortada`). */
   featured: Work[];
 };
 
 export function mezclarWeb({ contenido, albumes, destacadas }: DatosRemotos): Web {
-  const featured = destacadasDesdeFilas(destacadas);
+  const albums = albumesDesdeFilas(albumes);
   return {
     site: mezclarSite(bloque(contenido, "negocio")),
     services: mezclarServicios(bloque(contenido, "servicios")),
     faqs: mezclarFaq(bloque(contenido, "faq")),
     photos: mezclarImagenes(bloque(contenido, "imagenes")),
-    albums: albumesDesdeFilas(albumes),
-    featured: featured.length ? featured : defaultFeatured,
+    albums,
+    featured: seleccionPortada(albums, destacadasDesdeFilas(destacadas)),
   };
 }
 
@@ -267,6 +307,13 @@ export const webPorDefecto: Web = mezclarWeb({ contenido: null, albumes: null, d
 
 /** Galería de un servicio: fotos de los álbumes con ese servicio o, si no hay, las del código. */
 export function trabajosDeServicio(web: Web, slug: ServiceSlug): Work[] {
-  const remotos = web.albums.filter((a) => a.service === slug).flatMap((a) => a.works);
-  return remotos.length ? remotos : defaultWorks.filter((w) => w.category === slug);
+  return fotosDeTipo(web.albums, slug);
+}
+
+/**
+ * Todos los trabajos para /trabajos, por tipo: cada tipo en el orden de los servicios con sus fotos del panel (o,
+ * si no tiene, las de ejemplo del código) y, al final, las de los álbumes sin servicio (`category` null).
+ */
+export function trabajosPorTipo(web: Web): Work[] {
+  return [...SLUGS.flatMap((slug) => fotosDeTipo(web.albums, slug)), ...web.albums.filter((a) => a.service === null).flatMap((a) => a.works)];
 }
