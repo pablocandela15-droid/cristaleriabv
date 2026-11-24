@@ -76,6 +76,30 @@ export async function leerDestacadas(): Promise<FilaDestacada[] | null> {
   );
 }
 
+/**
+ * ¿Se puede apuntar alguien a la newsletter? (GET a `newsletter-alta` del panel: clave de Resend y remitente
+ * configurados). El bloque del pie y la casilla del presupuesto solo salen si es que sí: mientras el dueño no termine
+ * de configurarla (o la función no esté desplegada), la web queda como siempre. Sin Supabase no se consulta nada.
+ */
+export async function leerNewsletterActiva(): Promise<boolean> {
+  "use cache";
+  if (isBackendConfigured) cacheLife("minutes");
+  else cacheLife("max");
+  cacheTag("newsletter");
+  if (!isBackendConfigured) return false;
+  try {
+    const res = await fetch(`${supabaseUrl.replace(/\/+$/, "")}/functions/v1/newsletter-alta`, {
+      headers: { ...publicHeaders(), Accept: "application/json" },
+      signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { disponible?: unknown };
+    return data?.disponible === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Contenido de la web ya mezclado sobre los valores de src/content/* (una vez por petición). */
 export const obtenerWeb = cache(async (): Promise<Web> => {
   const [contenido, albumes, destacadas] = await Promise.all([leerContenido(), leerAlbumes(), leerDestacadas()]);

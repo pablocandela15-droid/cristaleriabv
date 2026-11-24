@@ -2,8 +2,9 @@ import Link from "next/link";
 import { cacheLife } from "next/cache";
 import { ArrowUpRight, Calculator, Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Logo } from "@/components/site/logo";
+import { SuscripcionPie } from "@/components/newsletter/suscripcion-pie";
 import { mainNav, mapsLink, whatsappLink } from "@/content/site";
-import { obtenerWeb } from "@/lib/web/datos";
+import { leerNewsletterActiva, obtenerWeb } from "@/lib/web/datos";
 
 async function CopyrightYear() {
   "use cache";
@@ -22,16 +23,36 @@ const link = "inline-flex min-h-10 items-center text-[15px] text-cream-100/75 tr
 
 /**
  * Pie de página: marca y accesos rápidos, navegación, servicios y contacto en
- * columnas alineadas; debajo, la barra legal.
+ * columnas alineadas; debajo, la barra legal. Arriba del todo, la suscripción a
+ * la newsletter, solo si se puede apuntar alguien (leerNewsletterActiva: con las
+ * variables de Supabase y la newsletter configurada en el panel); si no, el pie
+ * queda como siempre.
  */
 export async function Footer() {
-  const { site, services } = await obtenerWeb();
+  const [{ site, services }, newsletter] = await Promise.all([obtenerWeb(), leerNewsletterActiva()]);
   const weekdays = site.hours[0];
   return (
     <footer className="relative overflow-hidden bg-navy-950 text-cream-100">
       <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 size-[34rem] rounded-full bg-navy-700/25 blur-3xl" />
 
       <div className="container-site relative pt-16 sm:pt-20">
+        {newsletter && (
+          <section
+            aria-labelledby="newsletter-titulo"
+            className="mb-14 grid gap-6 rounded-2xl border border-cream-200/10 bg-navy-900/50 p-6 sm:mb-16 sm:p-8 lg:grid-cols-[1fr_1.15fr] lg:items-start lg:gap-10"
+          >
+            <div className="max-w-md">
+              <h2 id="newsletter-titulo" className={heading}>
+                Novedades por correo
+              </h2>
+              <p className="mt-3 font-heading text-2xl font-medium leading-tight text-cream-100">Ofertas, trabajos nuevos y consejos</p>
+              <p className="mt-2 text-[15px] leading-relaxed text-cream-100/70">
+                Te escribimos solo cuando hay algo que contar. Sin spam: cada correo lleva un enlace para darte de baja.
+              </p>
+            </div>
+            <SuscripcionPie />
+          </section>
+        )}
         <div className="grid gap-12 lg:grid-cols-[1.3fr_0.8fr_1fr_1.2fr] lg:gap-10">
           {/* Marca */}
           <div className="max-w-sm">

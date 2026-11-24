@@ -18,6 +18,8 @@ export type WebCliente = {
   faqs: Faq[];
   /** Fila de `web_tarifas` (o null): la resuelve usePricing(). */
   tarifas: FilaTarifas | null;
+  /** Se puede apuntar alguien a la newsletter (leerNewsletterActiva): casilla del presupuesto. */
+  newsletter?: boolean;
 };
 
 const WebContext = createContext<WebCliente>({

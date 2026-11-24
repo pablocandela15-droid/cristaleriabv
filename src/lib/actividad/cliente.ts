@@ -35,6 +35,7 @@ export type TipoEvento =
   | "presupuesto_solicitado"
   | "presupuesto_rechazado"
   | "contacto_enviado"
+  | "newsletter_alta"
   | "carga_pagina"
   | "peticion"
   | "error_js"
