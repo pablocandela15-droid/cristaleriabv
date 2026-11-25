@@ -36,16 +36,28 @@ export function registrarContactoEnviado(formulario: "contacto" | "visita", via:
 }
 
 /**
+ * Alta en la newsletter (pie de página o solicitud de presupuesto): «ok» si el servidor la aceptó (queda pendiente
+ * de confirmar por correo) o «rechazada» con su código. Nunca el email ni el nombre.
+ */
+export function registrarAltaNewsletter(resultado: { ok: true } | { ok: false; status: number }, origen: "web_formulario" | "web_presupuesto") {
+  registrar("newsletter_alta", {
+    accion: resultado.ok ? "ok" : "rechazada",
+    objetivo: origen,
+    props: { origen, status: resultado.ok ? undefined : resultado.status },
+  });
+}
+
+/**
  * Llamada a una edge function: `peticion` (técnico) y, si falla por el
  * servidor o por la red, `error_peticion` (la de la solicitud de presupuesto
  * es crítica en el panel).
  */
-export function registrarPeticion(funcion: string, status: number, ms: number, detalle?: string) {
-  registrar("peticion", { objetivo: funcion, valor: Math.round(ms), props: { endpoint: funcion, metodo: "POST", status } });
+export function registrarPeticion(funcion: string, status: number, ms: number, detalle?: string, metodo: "GET" | "POST" = "POST") {
+  registrar("peticion", { objetivo: funcion, valor: Math.round(ms), props: { endpoint: funcion, metodo, status } });
   if (status === 0 || status >= 500) {
     registrar("error_peticion", {
       objetivo: funcion,
-      props: { endpoint: funcion, metodo: "POST", status },
+      props: { endpoint: funcion, metodo, status },
       error: { mensaje: status === 0 ? `Sin respuesta de ${funcion}${detalle ? ` (${detalle})` : ""}` : `HTTP ${status} en ${funcion}` },
     });
   }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/site/legal-page";
+import { newsletterDisponible } from "@/lib/newsletter";
 
 export const metadata: Metadata = { title: "Política de cookies", robots: { index: false }, alternates: { canonical: "/cookies" } };
 
@@ -45,6 +46,13 @@ export default function CookiesPage() {
           Los enlaces a WhatsApp y Google Maps abren servicios externos que aplican sus propias políticas de cookies cuando los
           visitas.
         </li>
+        {newsletterDisponible && (
+          <li>
+            Los correos de la newsletter (solo si te suscribes) pueden llevar una imagen mínima y enlaces que pasan por nuestro
+            proveedor de envío, Resend, para saber si se entregan, se abren o se pulsa un enlace. Es parte del correo, no de esta web,
+            y no instala cookies en tu navegador.
+          </li>
+        )}
       </ul>
 
       <h2>5. Cambios</h2>

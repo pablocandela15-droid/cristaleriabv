@@ -4,9 +4,11 @@ import { useState, type FormEvent } from "react";
 import { CheckCircle2, LoaderCircle, Send, TriangleAlert } from "lucide-react";
 import { Field, TextArea, TextInput } from "@/components/forms/fields";
 import { ConsentCheckbox, Honeypot } from "@/components/forms/consent";
+import { CasillaNewsletter } from "@/components/newsletter/casilla";
 import { useWeb } from "@/components/site/web-provider";
 import { whatsappLink } from "@/content/site";
 import { submitQuoteRequest, validators } from "@/lib/requests";
+import { CASILLA_PRESUPUESTO, suscribir } from "@/lib/newsletter";
 import { useFormularioActividad } from "@/lib/actividad/react";
 
 type Errors = Partial<Record<"name" | "phone" | "email" | "consent", string>>;
@@ -15,6 +17,8 @@ type Errors = Partial<Record<"name" | "phone" | "email" | "consent", string>>;
  * Solicitud de presupuesto desde el resumen de la calculadora. Se guarda en el
  * gestor de presupuestos del panel (edge function `web-solicitud-presupuesto`)
  * y muestra el número de solicitud; si falla, ofrece enviarla por WhatsApp.
+ * Casilla opcional (sin marcar) para recibir también la newsletter: tras guardar
+ * la solicitud se apunta con doble opt-in (le llega un correo para confirmar).
  */
 export function QuoteRequestForm({
   categoria,
@@ -31,10 +35,12 @@ export function QuoteRequestForm({
   town?: string;
   onDone?: () => void;
 }) {
-  const { site } = useWeb();
-  const [form, setForm] = useState({ name: "", phone: "", email: "", town: town ?? "", notes: "", consent: false, website: "" });
+  const { site, newsletter: newsletterActiva } = useWeb();
+  const [form, setForm] = useState({ name: "", phone: "", email: "", town: town ?? "", notes: "", consent: false, newsletter: false, website: "" });
   const [errors, setErrors] = useState<Errors>({});
-  const [state, setState] = useState<{ kind: "idle" | "sending" } | { kind: "done"; numero?: string } | { kind: "error"; message: string }>({
+  const [state, setState] = useState<
+    { kind: "idle" | "sending" } | { kind: "done"; numero?: string; newsletter?: { ok: boolean; mensaje: string } } | { kind: "error"; message: string }
+  >({
     kind: "idle",
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -54,7 +60,7 @@ export function QuoteRequestForm({
     const e: Errors = {
       name: validators.name(form.name),
       phone: validators.phone(form.phone),
-      email: validators.email(form.email),
+      email: validators.email(form.email) ?? (newsletterActiva && form.newsletter && !form.email.trim() ? "Escribe tu email para recibir las novedades" : undefined),
       consent: validators.consent(form.consent),
     };
     const clean = Object.fromEntries(Object.entries(e).filter(([, v]) => v)) as Errors;
@@ -78,7 +84,18 @@ export function QuoteRequestForm({
       consentimiento: true,
       website: form.website,
     });
-    setState(res.ok ? { kind: "done", numero: res.numero } : { kind: "error", message: res.error });
+    if (!res.ok) {
+      setState({ kind: "error", message: res.error });
+      return;
+    }
+    let newsletter: { ok: boolean; mensaje: string } | undefined;
+    if (newsletterActiva && form.newsletter && form.email.trim()) {
+      const n = await suscribir({ email: form.email, nombre: form.name, origen: "web_presupuesto", website: form.website });
+      newsletter = n.ok
+        ? { ok: true, mensaje: "Te hemos enviado un correo para confirmar la suscripción a las novedades." }
+        : { ok: false, mensaje: "No hemos podido apuntarte a las novedades ahora mismo; puedes hacerlo desde el pie de la web." };
+    }
+    setState({ kind: "done", numero: res.numero, newsletter });
   }
 
   if (state.kind === "done") {
@@ -98,6 +115,7 @@ export function QuoteRequestForm({
           Gracias, {form.name.trim().split(" ")[0]}. Revisaremos tu presupuesto y te llamaremos para confirmarlo y concertar la visita
           técnica.
         </p>
+        {state.newsletter && <p className="max-w-sm text-sm text-ink-soft">{state.newsletter.mensaje}</p>}
         {onDone && (
           <button onClick={onDone} className="mt-2 min-h-11 cursor-pointer rounded-lg px-4 font-medium text-navy-900 underline underline-offset-4">
             Cerrar
@@ -140,6 +158,11 @@ export function QuoteRequestForm({
         )}
       </Field>
       <ConsentCheckbox checked={form.consent} onChange={(v) => set("consent", v)} error={errors.consent} />
+      {newsletterActiva && (
+        <CasillaNewsletter checked={form.newsletter} onChange={(v) => set("newsletter", v)}>
+          {CASILLA_PRESUPUESTO}
+        </CasillaNewsletter>
+      )}
 
       {state.kind === "error" && (
         <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-navy-900">
